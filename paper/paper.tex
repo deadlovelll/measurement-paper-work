@@ -46,6 +46,8 @@ native code and build-level optimisations}}
 
 \begin{document}
 \maketitle
+% An unmarked note: the paper has no other footnotes, so no numbering to disturb.
+{\renewcommand{\thefootnote}{}\footnotetext{Artifact, raw data and both PDFs: \url{https://github.com/deadlovelll/measurement-paper-work}}}
 
 \begin{abstract}
 \noindent
@@ -439,7 +441,10 @@ binary whose behaviour is not established here.
 
 The artifact accompanying this paper contains the measurement layer, all kernels in all
 languages, the interpreter build scripts, the raw \code{pyperf} result
-files and the figure and table generators. One command runs all of it, taking a bare machine to both PDFs and pinning every toolchain to
+files and the figure and table generators. It is published at
+\url{https://github.com/deadlovelll/measurement-paper-work}.
+
+One command runs all of it, taking a bare machine to both PDFs and pinning every toolchain to
 the version measured here:
 
 \begin{Verbatim}[fontsize=\small,xleftmargin=1em]
