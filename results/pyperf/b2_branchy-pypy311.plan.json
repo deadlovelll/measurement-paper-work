@@ -1,0 +1,118 @@
+{
+ "suite": "b2_branchy",
+ "params": {
+  "tok_n": 2000000,
+  "tree_depth": 18,
+  "bfs_n": 500000
+ },
+ "interp": {
+  "executable": "/home/timofei/mp-x86/pypy/bin/pypy3",
+  "version": "3.11.13",
+  "implementation": "PyPy",
+  "compiler": "",
+  "gil_enabled": null,
+  "free_threaded": false,
+  "config_args": null,
+  "core_cflags": null
+ },
+ "reference": {
+  "tokenize": "(1149705, 14508581)",
+  "binarytrees": "262143",
+  "bfs": "5841004"
+ },
+ "reference_raw": {
+  "tokenize": [
+   1149705,
+   14508581
+  ],
+  "binarytrees": 262143,
+  "bfs": 5841004
+ },
+ "plan": [
+  {
+   "case": "tokenize",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "bfs",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "bfs",
+   "impl": "cpython_flat",
+   "note": "pure Python, flat preallocated lists instead of deque/dict"
+  },
+  {
+   "case": "tokenize",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "bfs",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "tokenize",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "bfs",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "tokenize",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  },
+  {
+   "case": "bfs",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  }
+ ],
+ "problems": [
+  {
+   "case": "tokenize",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  },
+  {
+   "case": "bfs",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  }
+ ]
+}

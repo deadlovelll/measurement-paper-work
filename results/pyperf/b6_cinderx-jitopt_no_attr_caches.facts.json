@@ -1,0 +1,84 @@
+{
+ "suite": "b6_cinderx",
+ "label": "jitopt_no_attr_caches",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/cinder/venv-cinder-adaptive/bin/python",
+  "version": "3.14.5+meta",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/cinder/fork314' '--with-ensurepip=install' '--enable-loadable-sqlite-extensions' 'CC=/usr/bin/clang'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden  -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "arraysum/jitopt_no_attr_caches",
+  "mandelbrot/jitopt_no_attr_caches",
+  "matmul/jitopt_no_attr_caches",
+  "tokenize/jitopt_no_attr_caches",
+  "binarytrees/jitopt_no_attr_caches",
+  "bfs/jitopt_no_attr_caches",
+  "call_depth_200/jitopt_no_attr_caches",
+  "traceback_depth_50/jitopt_no_attr_caches",
+  "frame_walk_depth_100/jitopt_no_attr_caches",
+  "jit_force_compile/jitopt_no_attr_caches/arraysum_py",
+  "jit_force_compile/jitopt_no_attr_caches/mandelbrot_py",
+  "jit_force_compile/jitopt_no_attr_caches/matmul_py",
+  "jit_force_compile/jitopt_no_attr_caches/tokenize_py",
+  "jit_force_compile/jitopt_no_attr_caches/binarytrees_py",
+  "jit_force_compile/jitopt_no_attr_caches/bfs_py",
+  "jit_force_compile/jitopt_no_attr_caches/_build",
+  "jit_force_compile/jitopt_no_attr_caches/_check"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "params": {
+   "vec_n": 1000000,
+   "mb_w": 200,
+   "mb_h": 150,
+   "mb_iter": 30,
+   "mat_n": 96,
+   "tok_n": 200000,
+   "tree_depth": 16,
+   "bfs_n": 200000
+  },
+  "cinderx": {
+   "cinderx": true,
+   "jit": true,
+   "compiled": [
+    "arraysum_py",
+    "mandelbrot_py",
+    "matmul_py",
+    "tokenize_py",
+    "binarytrees_py",
+    "bfs_py",
+    "_build",
+    "_check"
+   ],
+   "failed": [],
+   "version": "?",
+   "frame_evaluator": true,
+   "compile_after_n_calls": 2
+  },
+  "config": {
+   "cinderx": true,
+   "jit": true,
+   "features": false,
+   "jit_env": {
+    "CINDERX_JIT_ATTR_CACHES": "0"
+   }
+  },
+  "parallel_gc_settings": {
+   "num_threads": 8,
+   "min_generation": 2
+  },
+  "parallel_gc_compiled_in": true
+ }
+}

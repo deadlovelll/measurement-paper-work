@@ -1,0 +1,59 @@
+{
+ "suite": "b2_branchy",
+ "label": "314",
+ "interp": {
+  "executable": "/home/timofei/Downloads/Telegram Desktop/measurement-paper-work/measurement-paper-work/bench/venvs/u314/bin/python",
+  "version": "3.14.6",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/uniform/v314' '--enable-optimizations' '--with-ensurepip=install' 'CC=/usr/bin/clang'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -fno-semantic-interposition -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=/home/timofei/mp-x86/uniform/src/v314/code.profclangd -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "bfs/codon_jit",
+  "binarytrees/codon_jit",
+  "tokenize/codon_jit",
+  "bfs/codon_pyext",
+  "binarytrees/codon_pyext",
+  "tokenize/codon_pyext",
+  "bfs/rust_ctypes",
+  "binarytrees/rust_ctypes",
+  "tokenize/rust_ctypes",
+  "bfs/c_ctypes",
+  "binarytrees/c_ctypes",
+  "tokenize/c_ctypes",
+  "bfs/numba",
+  "binarytrees/numba",
+  "tokenize/numba",
+  "bfs/cython",
+  "binarytrees/cython",
+  "tokenize/cython",
+  "bfs/cpython_flat",
+  "bfs/cpython_loop",
+  "binarytrees/cpython_loop",
+  "tokenize/cpython_loop",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "params": {
+   "tok_n": 2000000,
+   "tree_depth": 18,
+   "bfs_n": 500000
+  },
+  "reference": {
+   "tokenize": "(1149705, 14508581)",
+   "binarytrees": "262143",
+   "bfs": "5841004"
+  }
+ }
+}

@@ -1,0 +1,9 @@
+\begin{tabular}{lrrrr}
+\toprule
+tokenize kernel & instructions & cond.\ branches & cond.\ selects & ms \\
+\midrule
+C, clang -O3 -march=native & 167 & 20 & 6 & 22.29 \\
+Rust, rustc -C opt-level=3 -C target-cpu=native & 180 & 20 & 6 & 22.42 \\
+\bottomrule
+\end{tabular}
+\\[2pt]{\footnotesize Disassembled on x86\_64; the branch and select mnemonics counted are recorded in \texttt{results/codegen/summary.json}.}

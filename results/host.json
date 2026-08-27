@@ -1,0 +1,14 @@
+{
+  "generated_by": "bench/host_topology.sh",
+  "cpu_model": "Intel Core Ultra 7 255H",
+  "cpu_count": 16,
+  "cpu_classes": "6@cap1024 8@cap887 2@cap631",
+  "perf_cpus": "0-5",
+  "mem_gb": 30.8,
+  "kernel": "Linux 7.0.0-28-generic",
+  "distro": "Ubuntu 24.04.4 LTS",
+  "arch": "x86_64",
+  "governor": "performance",
+  "turbo": "off",
+  "aslr": "2"
+}

@@ -1,0 +1,54 @@
+{
+ "suite": "b3_runtime",
+ "label": "pypy311",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/pypy/bin/pypy3",
+  "version": "3.11.13",
+  "implementation": "PyPy",
+  "compiler": "",
+  "gil_enabled": null,
+  "free_threaded": false,
+  "config_args": null,
+  "core_cflags": null
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "create_plain_obj/pypy311",
+  "create_slots_obj/pypy311",
+  "create_dict/pypy311",
+  "create_tuple/pypy311",
+  "attr_get/pypy311",
+  "attr_get_slots/pypy311",
+  "attr_set/pypy311",
+  "method_call/pypy311",
+  "int_arith/pypy311",
+  "float_arith/pypy311",
+  "list_append/pypy311",
+  "dict_setitem/pypy311",
+  "str_format_join/pypy311",
+  "func_call/pypy311",
+  "exception_roundtrip/pypy311",
+  "gc_collect_100k_cycles/pypy311",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "version": "3.11.13",
+  "implementation": "PyPy",
+  "refcount_none": null,
+  "refcount_true": null,
+  "refcount_small_int": null,
+  "refcount_empty_str": null,
+  "immortal_singletons": null,
+  "gil_enabled": true,
+  "blocks_per_plain_obj": null,
+  "blocks_per_slots_obj": null,
+  "maxrss_mb": 90.5
+ }
+}

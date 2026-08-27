@@ -1,0 +1,54 @@
+{
+ "suite": "b5_buildcfg",
+ "label": "jit",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/realbuilds/w_jit/bin/python3.14",
+  "version": "3.14.6+",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/realbuilds/w_jit' '--without-ensurepip' '--enable-experimental-jit' 'CC=/usr/bin/clang' 'CFLAGS='",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -D_Py_TIER2=1 -D_Py_JIT  -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "create_plain_obj/jit",
+  "create_slots_obj/jit",
+  "create_dict/jit",
+  "create_tuple/jit",
+  "attr_get/jit",
+  "attr_get_slots/jit",
+  "attr_set/jit",
+  "method_call/jit",
+  "int_arith/jit",
+  "float_arith/jit",
+  "list_append/jit",
+  "dict_setitem/jit",
+  "str_format_join/jit",
+  "func_call/jit",
+  "exception_roundtrip/jit",
+  "gc_collect_100k_cycles/jit",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "version": "3.14.6+",
+  "implementation": "CPython",
+  "refcount_none": 3221225472,
+  "refcount_true": 3221225472,
+  "refcount_small_int": 3221225472,
+  "refcount_empty_str": 3221225472,
+  "immortal_singletons": true,
+  "gil_enabled": true,
+  "blocks_per_plain_obj": 3.9619,
+  "blocks_per_slots_obj": 3.96185,
+  "maxrss_mb": 29.3
+ }
+}

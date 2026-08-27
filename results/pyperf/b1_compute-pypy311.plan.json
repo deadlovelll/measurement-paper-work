@@ -1,0 +1,253 @@
+{
+ "suite": "b1_compute",
+ "params": {
+  "vec_n": 1000000,
+  "mb_w": 200,
+  "mb_h": 150,
+  "mb_iter": 30,
+  "mat_n": 96
+ },
+ "reference": {
+  "arraysum": 71357142.85714258,
+  "mandelbrot": 302858,
+  "matmul": 5307639.0
+ },
+ "interp": {
+  "executable": "/home/timofei/mp-x86/pypy/bin/pypy3",
+  "version": "3.11.13",
+  "implementation": "PyPy",
+  "compiler": "",
+  "gil_enabled": null,
+  "free_threaded": false,
+  "config_args": null,
+  "core_cflags": null
+ },
+ "plan": [
+  {
+   "case": "arraysum",
+   "impl": "cpython_loop",
+   "note": "pure Python, list of float",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "cpython_loop",
+   "note": "pure Python, list of float",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "cpython_loop",
+   "note": "pure Python, list of float",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "arraysum",
+   "impl": "cpython_builtin_sum",
+   "note": "builtin sum() over a list",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "numpy",
+   "note": "vectorised; matmul dispatches to the vendor BLAS, which is MULTI-THREADED by default -- the only implementation here that is not single-threaded",
+   "deviation": 3.96767655411761e-15,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numpy",
+   "note": "vectorised; matmul dispatches to the vendor BLAS, which is MULTI-THREADED by default -- the only implementation here that is not single-threaded",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "numpy",
+   "note": "vectorised; matmul dispatches to the vendor BLAS, which is MULTI-THREADED by default -- the only implementation here that is not single-threaded",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "numpy_1t",
+   "note": "the same NumPy with its BLAS held to one thread, so it is comparable with the single-threaded implementations below",
+   "deviation": 3.96767655411761e-15,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numpy_1t",
+   "note": "the same NumPy with its BLAS held to one thread, so it is comparable with the single-threaded implementations below",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "numpy_1t",
+   "note": "the same NumPy with its BLAS held to one thread, so it is comparable with the single-threaded implementations below",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "cython",
+   "note": "cython -O3, boundscheck off",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "cython",
+   "note": "cython -O3, boundscheck off",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "cython",
+   "note": "cython -O3, boundscheck off",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native, called through ctypes",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native, called through ctypes",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native, called through ctypes",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "c_pybind11",
+   "note": "same C kernels behind a pybind11 extension module",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "c_pybind11",
+   "note": "same C kernels behind a pybind11 extension module",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "c_pybind11",
+   "note": "same C kernels behind a pybind11 extension module",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "arraysum",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native, via ctypes",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native, via ctypes",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "matmul",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native, via ctypes",
+   "deviation": 0.0,
+   "tol": 1e-12
+  },
+  {
+   "case": "call_overhead",
+   "impl": "python_function",
+   "note": "cost of crossing the boundary with no work in the callee",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "call_overhead",
+   "impl": "cython",
+   "note": "cost of crossing the boundary with no work in the callee",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "call_overhead",
+   "impl": "c_pybind11",
+   "note": "cost of crossing the boundary with no work in the callee",
+   "deviation": 0.0,
+   "tol": 0.0
+  },
+  {
+   "case": "call_overhead",
+   "impl": "c_ctypes",
+   "note": "cost of crossing the boundary with no work in the callee",
+   "deviation": 0.0,
+   "tol": 0.0
+  }
+ ],
+ "problems": [
+  {
+   "case": "arraysum",
+   "impl": "numba",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numba",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "matmul",
+   "impl": "numba",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "arraysum",
+   "impl": "numba_fastmath",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numba_fastmath",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "matmul",
+   "impl": "numba_fastmath",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  },
+  {
+   "case": "call_overhead",
+   "impl": "numba",
+   "status": "unavailable",
+   "note": "ModuleNotFoundError(\"No module named 'numba'\")"
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "suite": "b3_runtime",
+ "label": "v310",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/uniform/v310/bin/python3.10",
+  "version": "3.10.18",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": null,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/uniform/v310' '--enable-optimizations' '--with-ensurepip=install' 'CC=/usr/bin/clang'",
+  "core_cflags": "-Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -std=c99 -Wextra -Wno-unused-result -Wno-unused-parameter -Wno-missing-field-initializers -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=code.profclangd -I./Include/internal -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "create_plain_obj/v310",
+  "create_slots_obj/v310",
+  "create_dict/v310",
+  "create_tuple/v310",
+  "attr_get/v310",
+  "attr_get_slots/v310",
+  "attr_set/v310",
+  "method_call/v310",
+  "int_arith/v310",
+  "float_arith/v310",
+  "list_append/v310",
+  "dict_setitem/v310",
+  "str_format_join/v310",
+  "func_call/v310",
+  "exception_roundtrip/v310",
+  "gc_collect_100k_cycles/v310",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "version": "3.10.18",
+  "implementation": "CPython",
+  "refcount_none": 7780,
+  "refcount_true": 834,
+  "refcount_small_int": 1580,
+  "refcount_empty_str": 511,
+  "immortal_singletons": false,
+  "gil_enabled": true,
+  "blocks_per_plain_obj": 5.96185,
+  "blocks_per_slots_obj": 3.9618,
+  "maxrss_mb": 26.9
+ }
+}

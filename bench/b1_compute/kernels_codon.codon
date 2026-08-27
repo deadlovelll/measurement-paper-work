@@ -1,0 +1,69 @@
+"""Codon implementations of the RQ1 compute kernels, built ahead of time by `codon build -pyext`."""
+# Do not delete the next import: it registers ndarray's __from_py__/__to_py__ conversions, and
+# without it the -pyext build cannot realise any function taking an array.
+import numpy.pybridge
+import numpy as np
+
+# matmul is i-j-k with a scalar accumulator and an *assignment* to c[row+j]. Writing it i-k-j
+# gives the same values and is ~2.4x faster, but it is a different kernel, not a faster Codon.
+
+
+def arraysum(a: np.ndarray[float, 1], n: int) -> float:
+    s = 0.0
+    for i in range(n):
+        s += a[i]
+    return s
+
+
+def mandelbrot(w: int, h: int, mx: int) -> int:
+    total = 0
+    for py in range(h):
+        y0 = -1.25 + 2.5 * py / h
+        for px in range(w):
+            x0 = -2.0 + 3.0 * px / w
+            x = 0.0
+            y = 0.0
+            it = 0
+            while x * x + y * y <= 4.0 and it < mx:
+                xt = x * x - y * y + x0
+                y = 2.0 * x * y + y0
+                x = xt
+                it += 1
+            total += it
+    return total
+
+
+def matmul(a: np.ndarray[float, 1], b: np.ndarray[float, 1], c: np.ndarray[float, 1], n: int):
+    for i in range(n):
+        row = i * n
+        for j in range(n):
+            s = 0.0
+            for k in range(n):
+                s += a[row + k] * b[k * n + j]
+            c[row + j] = s
+
+
+# The `_ptr` variants index the array's data pointer instead of the ndarray, dropping the
+# multiply-and-offset chain that run-time strides carry. Neither form vectorises.
+
+
+def arraysum_ptr(a: np.ndarray[float, 1], n: int) -> float:
+    p = a.data
+    s = 0.0
+    for i in range(n):
+        s += p[i]
+    return s
+
+
+def matmul_ptr(a: np.ndarray[float, 1], b: np.ndarray[float, 1], c: np.ndarray[float, 1],
+               n: int):
+    pa = a.data
+    pb = b.data
+    pc = c.data
+    for i in range(n):
+        row = i * n
+        for j in range(n):
+            s = 0.0
+            for k in range(n):
+                s += pa[row + k] * pb[k * n + j]
+            pc[row + j] = s

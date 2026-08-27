@@ -1,0 +1,20 @@
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{2}{c}{array sum ($10^6$ f64)} & \multicolumn{2}{c}{mandelbrot $200{\times}150$} & \multicolumn{2}{c}{matmul $96{\times}96$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+implementation & ms & $\times$ & ms & $\times$ & ms & $\times$ \\
+\midrule
+CPython loop & 32.23 & 1.0 & 46.92 & 1.0 & 73.27 & 1.0 \\
+CPython sum() & 6.25 & 5.2 & -- & -- & -- & -- \\
+Cython & 1.01 & 31.9 & 0.751 & 62.5 & 1.01 & 72.3 \\
+Codon AOT & 1.01 & 31.9 & 0.865 & 54.3 & 1.50 & 49.0 \\
+Codon AOT (ptr) & 1.01 & 31.9 & -- & -- & 0.587 & 124.7 \\
+Numba & 1.01 & 31.9 & 0.864 & 54.3 & 0.571 & 128.4 \\
+Numba fastmath & 0.419 & 76.9 & 0.683 & 68.7 & 0.535 & 137.0 \\
+Codon JIT & 1.05 & 30.6 & 0.910 & 51.5 & 1.59 & 46.0 \\
+C (ctypes) & 1.01 & 31.8 & 0.776 & 60.5 & 1.01 & 72.2 \\
+C (pybind11) & 1.01 & 31.9 & 0.752 & 62.4 & 1.01 & 72.2 \\
+Rust (ctypes) & 1.01 & 31.8 & 0.888 & 52.8 & 0.830 & 88.3 \\
+NumPy & 0.411 & 78.4 & 9.98 & 4.7 & 0.049 & 1495.9 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,320 @@
+
+==============================================================================
+RQ1 compute-bound kernels
+==============================================================================
+
+-- CPython 314 --
+  arraysum    py=   32.442ms  cpython_builtin_sum=5.2x  numpy=79.2x  cython=32.2x  numba=32.1x  numba_fastmath=77.5x  c_ctypes=32.1x  c_pybind11=32.1x  rust_ctypes=32.1x
+  mandelbrot  py=   46.477ms  numpy=4.4x  cython=62.0x  numba=53.9x  numba_fastmath=68.3x  c_ctypes=60.1x  c_pybind11=62.0x  rust_ctypes=52.5x
+  matmul      py=   73.166ms  numpy=1472.9x  cython=72.4x  numba=128.2x  numba_fastmath=136.9x  c_ctypes=72.3x  c_pybind11=72.3x  rust_ctypes=88.0x
+
+-- numba compile latency (314) --
+  arraysum    numba           compile=   211.8ms  break-even=7 calls
+  arraysum    numba_fastmath  compile=   211.8ms  break-even=7 calls
+  mandelbrot  numba           compile=   211.8ms  break-even=5 calls
+  mandelbrot  numba_fastmath  compile=   211.8ms  break-even=5 calls
+  matmul      numba           compile=   211.8ms  break-even=3 calls
+  matmul      numba_fastmath  compile=   211.8ms  break-even=3 calls
+
+-- call overhead (314) --
+  cython                 25.7 ns
+  python_function        31.5 ns
+  numba                  43.1 ns
+  c_pybind11             59.7 ns
+  c_ctypes              165.4 ns
+
+-- MAD distribution --
+  n=61  median=0.25%  p90=1.37%  max=5.48%
+
+==============================================================================
+RQ1b compiler flags: which of them change the program at all
+==============================================================================
+  compiler    : Ubuntu clang version 18.1.3 (1ubuntu1)
+  architecture: x86_64   tuning flag: -march=native
+
+  arraysum -- baseline clang -O2 = 1.0106 ms
+    O0                    5.0542 ms    0.20x
+    O2                    1.0106 ms    1.00x   same machine code as O3
+    O3                    1.0102 ms    1.00x   same machine code as O2
+    O3native              1.0104 ms    1.00x   same machine code as O3native_novec
+    O3native_novec        1.0103 ms    1.00x   same machine code as O3native
+    O3native_ffast        0.4182 ms    2.42x
+    numba_plain           1.0087 ms    1.00x
+    numba_fastmath        0.4173 ms    2.42x
+
+  mandelbrot -- baseline clang -O2 = 0.9678 ms
+    O0                    3.3908 ms    0.29x
+    O2                    0.9678 ms    1.00x
+    O3                    0.9671 ms    1.00x
+    O3native              0.7736 ms    1.25x   same machine code as O3native_novec
+    O3native_novec        0.7742 ms    1.25x   same machine code as O3native
+    O3native_ffast        0.7493 ms    1.29x
+    numba_plain           0.8624 ms    1.12x
+    numba_fastmath        0.6814 ms    1.42x
+
+  matmul -- baseline clang -O2 = 0.5639 ms
+    O0                    4.1880 ms    0.13x
+    O2                    0.5639 ms    1.00x   same machine code as O3
+    O3                    0.5633 ms    1.00x   same machine code as O2
+    O3native              1.0124 ms    0.56x   same machine code as O3native_novec
+    O3native_novec        1.0122 ms    0.56x   same machine code as O3native
+    O3native_ffast        0.5269 ms    1.07x
+    numba_plain           0.5691 ms    0.99x
+    numba_fastmath        0.5335 ms    1.06x
+
+  accumulator ladder on arraysum (clang -O2, no fast-math anywhere)
+    1 accumulator          1.0101 ms    1.00x vs 1 accumulator
+    2 accumulators         0.5065 ms    1.99x vs 1 accumulator
+    4 accumulators         0.3689 ms    2.74x vs 1 accumulator
+    8 accumulators         0.4368 ms    2.31x vs 1 accumulator
+    -ffast-math             0.4182 ms    1.13x of the best ladder step (the chain explains it)
+
+==============================================================================
+RQ2 branchy / allocating kernels
+==============================================================================
+
+-- CPython 314 --
+  tokenize     py=  301.125ms
+    cython           24.1844 ms     12.5x
+    numba            25.9589 ms     11.6x
+    c_ctypes         22.1899 ms     13.6x
+    rust_ctypes      22.3577 ms     13.5x
+  binarytrees  py=  121.938ms
+    cython           25.3325 ms      4.8x
+    numba            31.1623 ms      3.9x
+    c_ctypes          6.9518 ms     17.5x
+    rust_ctypes       6.0898 ms     20.0x
+  bfs          py=  200.449ms
+    cython           20.4053 ms      9.8x
+    numba            22.9275 ms      8.7x
+    c_ctypes         20.4100 ms      9.8x
+    rust_ctypes      22.2484 ms      9.0x
+
+==============================================================================
+RQ2 geometric means (314)
+==============================================================================
+  cython         compute=   52.5x (3)   branchy=    8.4x (3)
+  numba          compute=   60.6x (3)   branchy=    7.3x (3)
+  c_ctypes       compute=   51.9x (3)   branchy=   13.3x (3)
+  rust_ctypes    compute=   52.9x (3)   branchy=   13.4x (3)
+
+==============================================================================
+RQ3 runtime sweep 3.10 -> 3.14
+==============================================================================
+case                          v310    v311    v312    v313    v314   v314t
+attr_get                      1.00    1.84    1.53    1.54    1.97    1.74
+attr_get_slots                1.00    1.79    1.53    1.51    2.00    1.74
+attr_set                      1.00    2.81    2.36    2.22    2.97    1.01
+create_dict                   1.00    1.17    1.08    1.08    0.74    1.20
+create_plain_obj              1.00    1.42    1.38    1.88    1.73    2.24
+create_slots_obj              1.00    1.29    1.15    1.39    1.63    1.88
+create_tuple                  1.00    1.20    1.12    1.10    1.03    1.19
+dict_setitem                  1.00    1.17    1.12    1.08    1.35    1.17
+exception_roundtrip           1.00    0.83    1.08    1.12    1.21    0.78
+float_arith                   1.00    1.20    1.36    1.33    1.22    1.13
+func_call                     1.00    1.54    1.53    1.58    1.69    1.61
+gc_collect_100k_cycles        1.00    1.93    1.70    1.65    1.50    1.93
+int_arith                     1.00    1.22    1.07    1.04    1.26    1.13
+list_append                   1.00    1.77    1.52    1.41    1.15    0.85
+method_call                   1.00    1.76    1.58    1.60    2.04    1.80
+str_format_join               1.00    1.14    1.09    1.03    1.03    0.91
+
+-- specialisation warm-up: first execution vs steady state --
+  v310   first=  5.221us  steady=  4.031us  ratio=1.30  (k=1..24)
+  v311   first=  4.074us  steady=  3.062us  ratio=1.33  (k=1..24)
+  v312   first=  4.305us  steady=  3.261us  ratio=1.32  (k=1..24)
+  v313   first=  4.538us  steady=  3.432us  ratio=1.32  (k=1..24)
+  v314   first=  4.901us  steady=  3.510us  ratio=1.40  (k=1..24)
+
+-- runtime facts --
+  v310   refcount(None)=7780         immortal=False  blocks/obj dict=5.96 slots=3.96  rss=26.9MB
+  v311   refcount(None)=7887         immortal=False  blocks/obj dict=4.96 slots=3.96  rss=27.8MB
+  v312   refcount(None)=4294967295   immortal=True  blocks/obj dict=4.96 slots=3.96  rss=29.6MB
+  v313   refcount(None)=4294967295   immortal=True  blocks/obj dict=3.96 slots=3.96  rss=28.5MB
+  v314   refcount(None)=3221225472   immortal=True  blocks/obj dict=3.96 slots=3.96  rss=29.8MB
+  v314t  refcount(None)=3221225472   immortal=True  blocks/obj dict=3.96 slots=3.96  rss=36.0MB
+
+-- startup (ms, whole process: pyperf bench_command) --
+  v310   startup_bare              9.0
+  v310   startup_site             13.4
+  v310   startup_stdlib           47.6
+  v311   startup_bare              9.4
+  v311   startup_site             12.3
+  v311   startup_stdlib           51.1
+  v312   startup_bare             10.5
+  v312   startup_site             13.1
+  v312   startup_stdlib           55.2
+  v313   startup_bare             10.6
+  v313   startup_site             14.5
+  v313   startup_stdlib           56.8
+  v314   startup_bare             10.6
+  v314   startup_site             15.9
+  v314   startup_stdlib           66.3
+  v314t  startup_bare             13.7
+  v314t  startup_site             18.5
+  v314t  startup_stdlib           75.8
+
+==============================================================================
+RQ4 Cinder fork / CinderX
+==============================================================================
+case                    stock ms    fork  cinderx     jit
+arraysum                  32.388    0.98    1.11    1.34
+mandelbrot                46.717    1.01    1.33    1.43
+matmul                    74.392    0.97    1.12    1.52
+tokenize                  30.075    0.99    1.01    0.86
+binarytrees               28.088    1.00    1.23    1.04
+bfs                       77.702    0.99    1.03    1.17
+call_depth_200             0.009    1.00    1.35    1.35
+traceback_depth_50         3.281    1.00    1.17    1.17
+frame_walk_depth_100       0.022    1.01    1.14    1.14
+
+-- lazy imports / parallel gc --
+  import_200_modules_eager     fork                                18.917 ms  {}
+  import_200_modules_eager     fork_cinderx                        22.502 ms  {}
+  import_200_modules_eager     fork_cinderx_adaptive               22.871 ms  {}
+  import_200_modules_eager     stock                               18.246 ms  {}
+  import_200_modules_lazy      fork                                 0.001 ms  {}
+  import_200_modules_lazy      fork_cinderx                         0.001 ms  {}
+  import_200_modules_lazy      fork_cinderx_adaptive                0.001 ms  {}
+  gc_collect_200k_cycles       fork_cinderx/parallel_gc_off        30.951 ms  {}
+  gc_collect_200k_cycles       fork_cinderx/parallel_gc_on         31.959 ms  {}
+  gc_collect_200k_cycles       fork_cinderx_adaptive/parallel_gc_off    30.907 ms  {}
+  gc_collect_200k_cycles       fork_cinderx_adaptive/parallel_gc_on    31.658 ms  {}
+
+-- JIT compile latency --
+
+-- Static Python --
+  fork_static/boxed_python              70.600 ms  prims=None/None jit=None compile=0.0ms
+  fork_static/static_interp            686.510 ms  prims=None/None jit=None compile=0.0ms
+  fork_static/static_jit                 4.253 ms  prims=None/None jit=None compile=0.0ms
+  fork_static_adaptive/boxed_python     70.988 ms  prims=None/None jit=None compile=0.0ms
+
+==============================================================================
+RQ5 thread scaling
+==============================================================================
+
+  py_arith
+    gil      T1=  322.22ms  T2= 0.76x T3= 0.84x T4= 0.87x T6= 0.84x T8= 0.83x 
+    ft_gil   T1=  358.80ms  T2= 0.73x T3= 0.81x T4= 0.79x T6= 0.78x T8= 0.80x 
+    ft       T1=  359.40ms  T2= 1.78x T3= 2.41x T4= 2.94x T6= 4.25x T8= 5.60x 
+    procs8 (gil)  5.65x vs 1 thread
+
+  py_branchy
+    gil      T1=  275.36ms  T2= 0.84x T3= 0.89x T4= 0.89x T6= 0.88x T8= 0.88x 
+    ft_gil   T1=  288.39ms  T2= 0.83x T3= 0.88x T4= 0.86x T6= 0.84x T8= 0.86x 
+    ft       T1=  285.51ms  T2= 1.83x T3= 2.46x T4= 3.19x T6= 4.69x T8= 6.05x 
+
+  c_ffi_uniform
+    gil      T1=  106.66ms  T2= 1.96x T3= 2.90x T4= 3.80x T6= 5.54x T8= 7.16x 
+    ft_gil   T1=  107.01ms  T2= 1.93x T3= 2.79x T4= 3.53x T6= 4.73x T8= 5.82x 
+    ft       T1=  106.95ms  T2= 1.95x T3= 2.86x T4= 3.74x T6= 5.36x T8= 6.90x 
+
+  c_ffi_mandelbrot
+    gil      T1=   13.17ms  T2= 1.87x T3= 1.49x T4= 2.04x T6= 2.63x T8= 3.08x 
+    ft_gil   T1=   13.67ms  T2= 1.68x T3= 1.41x T4= 1.78x T6= 2.02x T8= 1.81x 
+    ft       T1=   13.65ms  T2= 1.78x T3= 1.41x T4= 1.95x T6= 2.36x T8= 2.70x 
+
+-- free-threading tax (single thread, relative to the GIL build) --
+  single_thread_arith      gil=1.00x ft_gil=1.14x ft=1.14x
+  single_thread_branchy    gil=1.00x ft_gil=1.05x ft=1.05x
+
+==============================================================================
+RQ6 build configurations of one 3.14.6 source tree
+==============================================================================
+case                                plain            pgo        ltothin        ltofull    pgo_ltofull pgo_ltofull_na            jit
+int_arith                           1.000          1.111          1.024          1.036          1.276          1.283          0.893
+float_arith                         1.000          0.959          1.007          1.029          1.172          1.210          0.962
+func_call                           1.000          1.009          1.059          1.044          1.204          1.182          1.114
+method_call                         1.000          1.024          1.033          1.069          1.102          1.149          1.189
+attr_get                            1.000          0.946          0.978          0.993          1.064          1.080          1.164
+attr_get_slots                      1.000          1.014          1.026          1.050          1.101          1.156          1.227
+attr_set                            1.000          0.977          0.953          0.953          0.928          0.902          0.885
+create_plain_obj                    1.000          1.028          1.028          1.022          1.084          1.100          0.986
+create_slots_obj                    1.000          1.016          1.025          1.014          1.066          1.093          0.991
+create_dict                         1.000          1.028          1.014          1.012          1.110          1.120          1.062
+create_tuple                        1.000          0.976          1.027          1.025          1.101          1.120          1.040
+list_append                         1.000          0.985          1.049          1.045          0.990          1.065          1.133
+dict_setitem                        1.000          1.016          0.998          1.020          1.007          1.026          1.067
+str_format_join                     1.000          1.131          1.091          1.119          1.187          1.166          1.004
+exception_roundtrip                 1.000          1.033          1.091          1.086          1.184          1.182          0.916
+gc_collect_100k_cycles              1.000          1.017          1.018          1.015          1.083          1.112          1.005
+
+GEOMEAN vs plain                    1.000          1.016          1.026          1.033          1.101          1.119          1.035
+startup_bare                         11.0           10.6           10.9           10.9           10.7           10.7           11.0   (ms)
+startup_site                         16.6           15.9           16.4           16.4           16.0           16.0           16.6   (ms)
+startup_stdlib                       69.4           66.2           67.8           67.4           65.6           65.6           69.4   (ms)
+
+==============================================================================
+RQ6b CPython experimental JIT (tier 2) vs identical non-JIT build
+==============================================================================
+case                          plain ms    jit ms   speedup
+attr_get                        1.1932    1.0250     1.164
+attr_get_slots                  1.2192    0.9940     1.227
+attr_set                        0.2341    0.2646     0.885
+create_dict                     6.1938    5.8339     1.062
+create_plain_obj                6.7106    6.8047     0.986
+create_slots_obj                5.6509    5.7037     0.991
+create_tuple                    2.5243    2.4266     1.040
+dict_setitem                    2.7613    2.5882     1.067
+exception_roundtrip             1.3932    1.5206     0.916
+float_arith                     5.0879    5.2891     0.962
+func_call                       5.8128    5.2195     1.114
+gc_collect_100k_cycles         19.2820   19.1775     1.005
+int_arith                       7.8956    8.8450     0.893
+list_append                     1.9376    1.7095     1.133
+method_call                     1.5923    1.3387     1.189
+str_format_join                 1.5254    1.5189     1.004
+GEOMEAN                                              1.035
+
+==============================================================================
+RQ7 mixed pipeline
+==============================================================================
+
+  gil
+    v0_pure              108.92 ms   1.00x
+    v1_numba             107.99 ms   1.01x
+    v2_numba_native       80.51 ms   1.35x
+    v3_native_threads    150.69 ms   0.72x
+    v4_all               148.47 ms   0.73x
+    stage_parse        gil/v0_pure         50.52 ms
+    stage_validate     gil/v0_pure         54.15 ms
+    stage_validate     gil/v2_native       26.32 ms
+    stage_aggregate    gil/v0_pure          3.87 ms
+    stage_aggregate    gil/v1_numba         3.10 ms
+
+  ft
+    v0_pure              109.31 ms   1.00x
+    v1_numba             108.49 ms   1.01x
+    v2_numba_native       81.31 ms   1.34x
+    v3_native_threads     85.37 ms   1.28x
+    v4_all                86.68 ms   1.26x
+    stage_parse        ft/v0_pure          48.97 ms
+    stage_validate     ft/v0_pure          55.66 ms
+    stage_validate     ft/v2_native        28.43 ms
+    stage_aggregate    ft/v0_pure           4.56 ms
+    stage_aggregate    ft/v1_numba          3.69 ms
+
+==============================================================================
+RQ8 PyPy vs CPython
+==============================================================================
+case                           cpy314 ms   pypy ms   speedup
+
+-- kernels on PyPy (b1/b2) --
+  arraysum     CPython    32.442 ms   PyPy     1.668 ms    19.45x
+  mandelbrot   CPython    46.477 ms   PyPy     2.030 ms    22.89x
+  matmul       CPython    73.166 ms   PyPy     1.710 ms    42.78x
+  arraysum     c_ctypes     CPython    1.011 ms  PyPy    1.052 ms    0.96x
+  arraysum     rust_ctypes  CPython    1.011 ms  PyPy    1.052 ms    0.96x
+  mandelbrot   c_ctypes     CPython    0.774 ms  PyPy    0.807 ms    0.96x
+  mandelbrot   rust_ctypes  CPython    0.885 ms  PyPy    0.918 ms    0.96x
+  matmul       c_ctypes     CPython    1.012 ms  PyPy    1.037 ms    0.98x
+  matmul       rust_ctypes  CPython    0.832 ms  PyPy    0.854 ms    0.97x
+  tokenize     CPython   301.125 ms   PyPy    40.114 ms     7.51x
+  binarytrees  CPython   121.938 ms   PyPy    21.798 ms     5.59x
+  bfs          CPython   200.449 ms   PyPy    63.576 ms     3.15x
+  tokenize     c_ctypes     CPython   22.190 ms  PyPy  118.517 ms    0.19x
+  tokenize     rust_ctypes  CPython   22.358 ms  PyPy  118.522 ms    0.19x
+  binarytrees  c_ctypes     CPython    6.952 ms  PyPy    7.044 ms    0.99x
+  binarytrees  rust_ctypes  CPython    6.090 ms  PyPy    5.709 ms    1.07x
+  bfs          c_ctypes     CPython   20.410 ms  PyPy   20.565 ms    0.99x
+  bfs          rust_ctypes  CPython   22.248 ms  PyPy   22.423 ms    0.99x

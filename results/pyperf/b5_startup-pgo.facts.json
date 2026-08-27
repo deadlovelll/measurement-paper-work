@@ -1,0 +1,62 @@
+{
+ "suite": "b5_startup",
+ "label": "pgo",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/realbuilds/w_pgo/bin/python3.14",
+  "version": "3.14.6+",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/realbuilds/w_pgo' '--without-ensurepip' '--enable-optimizations' 'CC=/usr/bin/clang' 'CFLAGS='",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -fno-semantic-interposition -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=/home/timofei/mp-x86/realbuilds/work/w_pgo/code.profclangd -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "startup_bare/pgo",
+  "startup_site/pgo",
+  "startup_stdlib/pgo",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "executable": "/home/timofei/mp-x86/realbuilds/w_pgo/bin/python3.14",
+  "version": "3.14.6+",
+  "commands": {
+   "startup_bare/pgo": {
+    "command": [
+     "/home/timofei/mp-x86/realbuilds/w_pgo/bin/python3.14",
+     "-S",
+     "-c",
+     "pass"
+    ],
+    "params": {},
+    "note": "python -S -c pass: the runtime floor, site processing skipped"
+   },
+   "startup_site/pgo": {
+    "command": [
+     "/home/timofei/mp-x86/realbuilds/w_pgo/bin/python3.14",
+     "-c",
+     "pass"
+    ],
+    "params": {},
+    "note": "python -c pass as invoked in practice, site processing included"
+   },
+   "startup_stdlib/pgo": {
+    "command": [
+     "/home/timofei/mp-x86/realbuilds/w_pgo/bin/python3.14",
+     "-c",
+     "import json, re, argparse, subprocess, logging, datetime, collections, dataclasses, typing"
+    ],
+    "params": {},
+    "note": "start-up plus nine common stdlib imports (import json, re, argparse, subprocess, logging, datetime, collections, dataclasses, typing)"
+   }
+  }
+ }
+}

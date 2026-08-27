@@ -1,0 +1,104 @@
+Эта работа ставила целью измерить арсенал приёмов ускорения Python в условиях, которые позволяют их
+сравнивать: восемь вопросов, один протокол измерения, одно происхождение интерпретаторов, один
+документированный хост и код за каждой цифрой. Получается из этого таблица, индексированная
+нагрузкой, а не инструментом, а разделы ниже --- основные выводы, которые из неё следуют.
+
+\textbf{Что даёт технология.} Компилированный код --- любым из проверенных путей --- на
+один-два порядка быстрее интерпретатора CPython на вычислительных ядрах ($31$--$\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/codon_pyext_ptr}{32}\times$ на сумме
+массива, $52$--$\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/cython}{62}\times$ на сетке мандельброта, $46$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba}{128}\times$ на наивном произведении матриц).
+Каким именно путём идти, значит гораздо меньше, чем то, что идти надо хоть каким-то:
+на скалярной редукции они совпадают с точностью до $\meas{pct:b1_compute-314:arraysum/codon_jit|b1_compute-314:arraysum/codon_pyext_ptr}{4.4}\%$, а на двух других ядрах расходятся на
+$\meas{pct:b1_compute-314:mandelbrot/codon_jit|b1_compute-314:mandelbrot/cython}{21}\%$ и в $\meas{ratio:b1_compute-314:matmul/codon_jit|b1_compute-314:matmul/numba}{2.8}$~раза, в обе стороны и без постоянного победителя. На фоне множителя от тридцати до
+сотни скорость между Cython, Codon, Numba, C и Rust не выбирает, а то, чем этот выбор решается ---
+сложность сборки, отлаживаемость, владение кодом --- эта работа не измеряет. Разброс при
+этом настоящий, а не равенство, и проекту,
+вся стоимость которого сводится к одному ядру, стоит измерить своё. Отказ от GIL даёт $\meas{ratio:b4_threads-ft:py_arith/ft/T1_control|b4_threads-ft:py_arith/ft/T8}{5.60}\times$
+на арифметике и $\meas{ratio:b4_threads-ft:py_branchy/ft/T1|b4_threads-ft:py_branchy/ft/T8}{6.05}\times$ на насыщенном ветвлениями коде на восьми потоках, а контроль
+\code{PYTHON\_GIL=1} на том же бинарнике --- который вместо этого теряет $14$--$\meas{saving:b4_threads-ft_gil:py_arith/ft_gil/T1_control|b4_threads-ft_gil:py_arith/ft_gil/T8}{20}\%$ на восьми
+потоках --- подтверждает, что отвечает за это блокировка, а не сборка.
+
+\textbf{Где механизмы --- не те, которые обычно называют.} Крупнейшие рычаги в вычислительной части
+--- это решение компилировать вообще и, там, где операция уже есть в библиотеке, поставляемый BLAS,
+флаги же под этими решениями ведут себя менее единообразно, чем звучат их имена.
+Дизассемблирование каждого варианта флагов и решает, что каждый из них на самом деле меняет:
+\code{-O2} и \code{-O3} порождают побайтово одинаковый код на двух ядрах из трёх и расходятся на
+одну инструкцию на третьем, и времена этому соответствуют, так что переход между ними здесь не
+даёт ничего. Другой код везде порождает только \code{-O3 -march=native}, и именно его эффект
+направлен в обе стороны (\S\ref{sec:rq1b}). Отключение векторизатора под этим флагом не
+изменило ни порождаемого кода, ни времени ни на одном ядре, а SIMD-инструкции появляются только
+после того, как разрешён fast-math, --- так что архитектурный флаг оплачивает здесь не векторизацию.
+Контракт арифметики с плавающей точкой стоит $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$ на редукции и тоже, по сути, не является
+флагом: четыре независимых накопителя, выписанных в исходнике на C при обычном \code{-O2} и без
+всякого fast-math, на $\meas{pct:b1_flags-314:arraysum/O3native_ffast|b1_flags-314:arraysum/accum_acc4}{13}\%$ быстрее самого \code{-ffast-math}, а восемь накопителей хуже
+четырёх. Строка, которая читалась бы как «использовать нативные флаги», читается вместо этого как
+«определить, что арифметике разрешено делать, знать, что вы это определяете, и дизассемблировать
+результат на той цели, которую отгружаете». На нерегулярном коде компилятор побеждает не ветвление
+--- Cython и C расходятся на нашем обходе графа на полпроцента, а нативные пути опережают не более
+чем на $\meas{pct:b2_branchy-314:tokenize/codon_jit|b2_branchy-314:tokenize/c_ctypes}{17}\%$ на разборе байтов, --- а \emph{выделение памяти}, и именно там C и Rust уходят вперёд
+в $3.7$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}$~раза.
+
+\textbf{Где ответом является распределение.} Прогресс интерпретатора от 3.10 к 3.14 реален и
+неравномерен: ступеньку дала 3.11 (чтение атрибута $\meas{ratio:b3_runtime-v310:attr_get/v310|b3_runtime-v311:attr_get/v311}{1.84}\times$, вызовы методов $\meas{ratio:b3_runtime-v310:method_call/v310|b3_runtime-v311:method_call/v311}{1.76}\times$
+относительно 3.10), 3.12 часть этого отдала назад --- она медленнее 3.11 на 14 из наших 16
+операций, все 14 значимо, хотя именно в ней \code{None} стал бессмертным, --- 3.13 изменила мало, а
+3.14 восстановилась до $\meas{ratio:b3_runtime-v310:attr_get/v310|b3_runtime-v314:attr_get/v314}{1.97}\times$ и $\meas{ratio:b3_runtime-v310:method_call/v310|b3_runtime-v314:method_call/v314}{2.04}\times$, тогда как построение dict-литерала на 3.14 идёт
+со скоростью $\meas{ratio:b3_runtime-v310:create_dict/v310|b3_runtime-v314:create_dict/v314}{0.74}\times$ от 3.10. На уровне сборки полезной записью оказывается комбинация, а не
+какая-либо одиночная опция: PGO сам по себе стоит $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo}{1.02}\times$, PGO вместе с \emph{full} LTO ---
+$\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull}{1.10}\times$, а добавление к этому \code{-march=native} --- $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull_native}{1.12}\times$, единственная операция,
+которая проигрывает во всех шести конфигурациях, --- запись атрибута, на $0.88$--$\meas{ratio:b5_buildcfg-plain:attr_set/plain|b5_buildcfg-pgo:attr_set/pgo}{0.98}\times$.
+CinderX так же
+сопротивляется однословному вердикту. Он собирается в обеих своих конфигурациях с нулём ошибок
+компиляции, его JIT принудительно скомпилировал все восемь переданных ему функций без единого
+отказа, и все ядра прошли проверку корректности. Дальше его рантайм стоит $1$--$\meas{pct:b6_cinderx-fork_cinderx:mandelbrot/fork_cinderx|b6_cinderx-stock:mandelbrot/stock}{33}\%$ на шести
+наших нетипизированных ядрах в любой из конфигураций, а значит, цена лежит в пути исполнения, а не
+в флаге сборки, и JIT возвращает её на всех шести, исполняя их за $0.33$--$\meas{ratio:b6_cinderx-fork_jit:binarytrees/fork_jit|b6_cinderx-stock:binarytrees/stock}{0.79}\times$ обычной
+сборки, --- если позволить ему компилировать после специализации интерпретатором, а не до неё.
+Облегчённые фреймы сдвинули наши пробы менее чем на $\meas{pct:b6_cinderx-stock:traceback_depth_50/stock|b6_cinderx-fork:traceback_depth_50/fork}{3}\%$ на голом форке. Параллельный сборщик
+сдвинул свою пробу не в ту сторону, пока долгоживущая куча воркера была ему видна (в $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/state_visible_par6|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/state_visible_serial}{1.48}$~раза
+медленнее), и в нужную --- лишь после того, как \code{immortalize\_heap()} убрал её из поля
+зрения (в $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_par6}{1.06}$~раза быстрее), так что переменной оказывается состав кучи, а не число потоков. Его единственный крупный выигрыш (Static
+Python, $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ поверх JIT) достижим только через последовательность
+инициализации, описанную лишь в туториале, и только для переписанного типизированного кода. Измерение адаптивной конфигурации
+само оказалось работой: специализирующий путь для статических опкодов перенесли на 3.14 без
+обработчиков, в которые он специализируется, поэтому Static Python падал на первой же специализации,
+пока мы их не дописали, --- а дописанный, флаг снимает $\meas{saving:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static:matmul96_int/fork_static/static_interp}{43}\%$ с интерпретируемого Static Python и
+ровно ничего с компилируемого, что и есть самое ясное во всей работе высказывание о том, что
+примитивные опкоды --- промежуточное представление для JIT, а не способ быстрее интерпретировать.
+
+\textbf{Цены, а это как раз то, чего обычно нет.} Четыре числа, которые решают выбор и редко
+сообщаются: точка, в которой JIT окупается, --- она смещается с 7 вызовов до 7335 в зависимости
+только от размера входа, против одной наблюдённой задержки компиляции в $\meas{fact:b1_breakeven-314:facts.numba_compile_s:ms}{215}$\,мс, цена каждой
+границы FFI --- $59$--$\meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}$\,нс за пересечение (\S\ref{sec:rq2}), однопоточная цена отказа от GIL ---
+$1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$: её берёт сама free-threaded \emph{сборка}, снята блокировка или нет, а
+возвращает второй поток. И цена Static Python: в $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}$~раза медленнее Python с объектами, если
+не включить ещё и его JIT, и всё ещё в $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_python}{5.8}$~раза медленнее со включённым специализирующим путём
+интерпретатора. Сюда же относятся ещё два результата, потому
+что в них решает цена: PyPy даёт $3.2$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-pypy311:matmul/cpython_loop}{42.8}\times$ на неизменённом коде на чистом Python ---
+наибольший множитель, доступный без правки исходника, --- но единственное ядро, чей вызов
+\code{ctypes} передаёт
+ему двухмегабайтный буфер, стоит там в $\meas{ratio:b2_branchy-pypy311:tokenize/c_ctypes|b2_branchy-314:tokenize/c_ctypes}{5.3}$~раза дороже, чем на CPython ($118.5$ против
+$\meas{med:b2_branchy-314:tokenize/c_ctypes:ms}{22.3}$\,мс), тогда как вызовы, передающие только целые числа, укладываются в $\meas{pct:b2_branchy-314:binarytrees/rust_ctypes|b2_branchy-pypy311:binarytrees/rust_ctypes}{7}\%$, --- так что
+«сменить рантайм» и «вынести горячий цикл в C» могут исключать друг друга, а собственный
+экспериментальный JIT CPython представляет собой предложение на $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-jit}{1.04}\times$ в целом, которое тоже
+не бесплатно: он улучшает 10 из наших 16 операций и замедляет 6, а целочисленную арифметику и
+запись атрибута --- до $0.88$--$\meas{ratio:b5_buildcfg-plain:int_arith/plain|b5_buildcfg-jit:int_arith/jit}{0.89}\times$.
+
+\textbf{О методе.} Три наших собственных результата были неверны, пока их не поймал протокол
+(\S\ref{sec:method}), --- ради этого протокол и нужен. Поймавшие их средства дёшевы:
+\code{pyperf} вместо самописного таймера, попеременное измерение там, где утверждение держится на
+нескольких процентах, проверка корректности в том же процессе, который будет измерять, и проба,
+измеряющая хост, а не программу.
+
+\textbf{Практически} принцип композиции сохраняется с приложенным к нему более точным правилом: на
+нашем смешанном конвейере Numba на стадии, стоящей \meas{share:b7_pipeline-gil:stage_aggregate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{3.6}\% прогона, даёт $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v1_numba}{1.01}\times$, перенос
+стадии классификации --- половины времени прогона --- в C даёт $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$, а распределение работы
+поверх этого по четырём потокам даёт $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v3_native_threads}{0.72}\times$ под GIL и $1.26$--$\meas{ratio:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-ft:end_to_end/ft/v3_native_threads}{1.28}\times$ на free-threaded
+сборке --- всё равно ниже тех $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$, которые даёт одно хорошо нацеленное изменение.
+Композиция не аддитивна --- она направляется профилем, и наложение сверх профиля забирает
+производительность назад. Решения об оптимизации следует индексировать тем, что делает нагрузка ---
+цикл по массивам, выделение объектов, обход графа, запуск, распределение по ядрам, --- а не тем,
+какой инструмент сейчас в моде: внутри класса нагрузки разброс между инструментами оказался мал
+рядом с решением воспользоваться хоть одним, а между классами один и тот же инструмент различался
+на порядок.
+Таблица~\ref{tab:decision} и есть этот индекс, и каждая цифра в ней воспроизводится из
+прилагаемого артефакта двумя командами.

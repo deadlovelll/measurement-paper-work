@@ -1,0 +1,22 @@
+target-version = "py310"
+line-length = 100
+extend-exclude = ["bench/venvs", "bench/native_rs/target", "bench/build", "cinderx-workshop"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RET", "PIE", "PERF", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "PERF203"]
+
+[lint.per-file-ignores]
+"bench/b*/**/*.py" = [
+    "PERF401",
+    "PERF402",
+    "C4",
+    "SIM105",
+    "SIM110",
+    "SIM118",
+    "UP031",
+    "UP032",
+    "RUF005",
+    "UP045",
+]
+"bench/b6_cinderx/static_kernels/**/*.py" = ["F401"]

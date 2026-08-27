@@ -1,0 +1,13 @@
+{
+  "generated_by": "bench/b2_branchy/codegen_check.sh",
+  "arch": "x86_64",
+  "disassembler": "Ubuntu LLVM version 18.1.3",
+  "branch_pattern": "j(e|ne|z|nz|l|le|g|ge|b|be|a|ae|s|ns|o|no|p|np|rcxz|ecxz)",
+  "select_pattern": "cmov[a-z]+|set[a-z]+",
+  "symbols": {
+    "c_tokenize": {"instructions": 167, "cond_branches": 20, "cond_selects": 6}
+,    "rs_tokenize": {"instructions": 180, "cond_branches": 20, "cond_selects": 6}
+,    "c_matmul": {"instructions": 96, "cond_branches": 7, "cond_selects": 0}
+,    "rs_matmul": {"instructions": 72, "cond_branches": 7, "cond_selects": 1}
+  }
+}

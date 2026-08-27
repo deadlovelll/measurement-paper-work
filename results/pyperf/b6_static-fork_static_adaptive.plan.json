@@ -1,0 +1,41 @@
+{
+ "suite": "b6_static",
+ "params": {
+  "n": 96
+ },
+ "reference": 5307639,
+ "interp": {
+  "executable": "/home/timofei/mp-x86/cinder/venv-cinder-adaptive/bin/python",
+  "version": "3.14.5+meta",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/cinder/fork314' '--with-ensurepip=install' '--enable-loadable-sqlite-extensions' 'CC=/usr/bin/clang'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden  -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "plan": [
+  {
+   "impl": "boxed_python",
+   "note": "ordinary Python ints on the same interpreter"
+  },
+  {
+   "impl": "boxed_jit",
+   "note": "the same boxed kernel, compiled by the CinderX JIT -- the row that says what the types are worth against the same compiler rather than against the interpreter"
+  },
+  {
+   "impl": "static_interp",
+   "note": "Array[int64] primitives, CinderX interpreter"
+  },
+  {
+   "impl": "static_jit",
+   "note": "force-compiled by the CinderX JIT (compiled=True)"
+  }
+ ],
+ "problems": [],
+ "facts": {
+  "primitive_ops": 61,
+  "total_ops": 158,
+  "is_jit_compiled": true
+ }
+}

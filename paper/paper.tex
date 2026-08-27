@@ -1,0 +1,510 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+
+% long code tokens (file names, flag names) resist line breaking; give TeX some slack
+% instead of leaving overfull boxes
+\emergencystretch=2.5em
+\hyphenpenalty=150
+\tolerance=1200
+
+% Figures are generated from the raw results; while a suite is still running its figure
+% may be absent. Render a visible placeholder instead of failing the build.
+\newcommand{\figifexists}[2]{%
+  \IfFileExists{#1}{\includegraphics[width=#2\linewidth]{#1}}%
+  {\fbox{\parbox[c][2.6cm][c]{0.96\linewidth}{\centering\itshape\small
+   measurement still running --- this figure is not generated yet}}}}
+
+% provenance of a measured number; the gate reads it, LaTeX prints only the value
+\newcommand{\meas}[2]{#2}
+\newcommand{\code}[1]{\texttt{\small #1}}
+\definecolor{qbg}{HTML}{f2f4f8}
+% Each results section opens with the question it answers, so a reader knows what the
+% measurement that follows is for before seeing any numbers.
+\newcommand{\question}[2]{%
+  \par\vspace{2pt}\noindent\fcolorbox{qbg}{qbg}{%
+    \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\small\textbf{#1} #2}}%
+  \par\vspace{4pt}}
+
+\title{\textbf{Python under load: a measurement study of JIT, runtime,\\
+native code and build-level optimisations}}
+\author{T.\,S.~Ivankov\\ \small ITMO University \and
+        \small Scientific advisor: I.\,V.~Struchkov, Cand.\,Sc.\,(Tech.)\\ \small ITMO University}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Deciding how to speed up a Python program means choosing among a dozen techniques whose
+published results were not produced under comparable conditions --- different machines, different
+input sizes, different baselines --- and almost never state what the technique costs on the code
+it does not accelerate. This paper measures the whole menu on one machine, under one
+protocol, with one interpreter provenance. Six kernels --- three compute-bound, three branchy
+and allocation-heavy --- are implemented in pure Python, Cython, Numba, Codon (ahead of
+time and through its JIT), C (through \code{ctypes}) and Rust, with the three compute-bound
+kernels additionally in NumPy and a pybind11 binding; CPython 3.10--3.14
+and the free-threaded build are
+compiled here from release tarballs with one compiler and one \code{configure} line; seven build
+configurations of 3.14.6 come from one source tree, including PGO with full LTO and the
+experimental tier-2 JIT; the PyPy 7.3.20 release binary, and Meta's Cinder fork with its CinderX
+extensions built from source on the same host, are measured against the same baseline. All timing is done by \code{pyperf}, so every number is a median over
+values from many independent processes, except where the text says otherwise; where a conclusion turns on two configurations being
+the same, it carries a significance test rather than a pair of rounded medians.
+
+Six results are worth stating up front. On compute-bound loops the choice among the compiled
+routes is worth far less than the decision to compile at all --- they agree to within
+$\meas{pct:b1_compute-314:arraysum/codon_jit|b1_compute-314:arraysum/codon_pyext_ptr}{4.4}\%$ on a scalar reduction and differ by $\meas{pct:b1_compute-314:mandelbrot/codon_jit|b1_compute-314:mandelbrot/cython}{21}\%$ on a mandelbrot grid and by $\meas{ratio:b1_compute-314:matmul/codon_jit|b1_compute-314:matmul/numba}{2.8}\times$ on a
+naive matrix product, in both directions and with no consistent winner, against the
+$31$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba}{128}\times$ that compiling at all is worth --- while what separates a $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba}{32}\times$ result
+from a $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba_fastmath}{77}\times$ one on the same kernel is the floating-point contract, not the tool. That
+contract is only partly a compiler flag: disassembling every flag variant shows \code{-O2} and
+\code{-O3} emitting identical machine code on two of the three kernels and indistinguishable
+times on the third, while \code{-march=native} changes the code of all three and the run time in
+both directions --- $\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/O3native}{1.25}\times$ faster on the mandelbrot grid, $\meas{ratio:b1_flags-314:matmul/O3native|b1_flags-314:matmul/O2}{1.80}\times$ \emph{slower} on the
+matrix product. What \code{-ffast-math} does to the reduction is break a serial dependency
+chain, and the source can break it without the flag. What limits a compiler on irregular code is allocation
+rather than branching: C and Rust lead Cython and Numba by $3.7$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}\times$ exactly where small
+objects are allocated, by at most $\meas{pct:b2_branchy-314:tokenize/numba|b2_branchy-314:tokenize/c_ctypes}{17}\%$ on a branch-heavy byte scanner, and not at all on a
+graph traversal.
+Interpreter progress is real but unevenly distributed: 3.14 runs attribute and method
+operations $2.0$--$\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314:attr_set/v314}{3.0}\times$ faster than 3.10, 3.11 is where most of that arrived, and 3.12
+gives part of it back by running slower than 3.11 on 14 of our 16 operations. Free-threading
+returns $5.6$--$\meas{ratio:b4_threads-ft:py_branchy/ft/T1_control|b4_threads-ft:py_branchy/ft/T8}{6.1}\times$ on eight threads for a $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ single-thread cost paid
+by the build rather than by the lock, and code whose hot loop is already native scales as well
+or better without it ($\meas{ratio:b4_threads-gil:c_ffi_uniform/gil/T1|b4_threads-gil:c_ffi_uniform/gil/T8}{7.2}\times$). Composition is profile-directed rather than additive: on a mixed pipeline the one
+change that matched the stage profile gave $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$, while stacking all four techniques gave
+$\meas{ratio:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-ft:end_to_end/ft/v4_all}{1.26}\times$ at best and $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v4_all}{0.73}\times$ under the GIL.
+
+Two rows concern the ground the rest stands on. Building the interpreter with PGO alone is worth
+$\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo}{1.02}\times$; the gain is in the combination, since PGO with \emph{full} LTO is $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull}{1.10}\times$ and
+adding \code{-march=native} to it $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull_native}{1.12}\times$, and the one operation that loses under all of
+them is attribute writes. CPython's own experimental JIT is $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-jit}{1.04}\times$ overall, improving 10 of
+our 16 operations and slowing 6 of them. On the alternative-runtime side, CinderX's
+JIT runs our six untyped kernels at $0.33$--$\meas{ratio:b6_cinderx-fork_jit:binarytrees/fork_jit|b6_cinderx-stock:binarytrees/stock}{0.79}\times$ stock once it is allowed to compile
+after the interpreter has specialised --- compiled before first call, the same kernels run at
+$0.85$--$\meas{ratio:b6_cinderx-jitopt_compile_at_first_call:matmul/jitopt_compile_at_first_call|b6_cinderx-stock:matmul/stock}{1.53}\times$, so the sign of that result is a property of the measurement --- and its
+Static Python adds a further $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ on a typed kernel ($\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static:matmul96_int/fork_static/static_jit}{7.5}\times$ for a process that draws the slow code layout), though those primitive types are
+worth having only because something compiles them: interpreted, even after we completed the
+specialising path that shipped unfinished, they are $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_python}{5.8}\times$ slower than the boxed code they
+replace. The largest factor available without editing the source is PyPy, which runs our
+unmodified
+pure-Python kernels $3.2$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-pypy311:matmul/cpython_loop}{42.8}\times$ faster but whose one \code{ctypes} call that hands a
+two-megabyte buffer across the boundary costs $\meas{ratio:b2_branchy-pypy311:tokenize/c_ctypes|b2_branchy-314:tokenize/c_ctypes}{5.3}\times$ more than CPython's while the calls
+that pass only integers are within $\meas{pct:b2_branchy-314:binarytrees/rust_ctypes|b2_branchy-pypy311:binarytrees/rust_ctypes}{7}\%$: ``switch runtime'' and ``move the hot loop to C''
+exclude each other only where the boundary carries bulk data.
+All code, all \code{pyperf} result files and the figure and table generators are in the
+accompanying artifact; every figure and table here is regenerated from those files by the
+generator commands of \S\ref{sec:repro}.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+A team with a Python program that is too slow has a dozen remedies to choose between, and they
+differ less in what they promise than in what they demand. Some ask for nothing but a different
+executable: PyPy, or since 3.13 the experimental JIT inside CPython itself, or a newer release,
+or the same release built with different flags (PGO, LTO, architecture-specific tuning). Some
+ask for annotations and a build step: Cython, Numba, Codon. Some ask for a second language
+behind an FFI: C, C++, Rust. Some ask for a different runtime and the maintenance that comes
+with it: Meta's Cinder and its CinderX extensions~\cite{cinder}, with a JIT, a static typing
+mode, a parallel collector and lazy imports. Choosing badly among these is expensive in
+engineering time, and the published evidence does not narrow the choice.
+
+These options are well known. What is missing is a way to place them side by side: each is
+normally demonstrated on the kernel that suits it, on an unnamed machine, against an unnamed
+baseline, with no statement of what was held
+constant and no account of what the technique costs when it is not the one being recommended. A team
+deciding between them is left comparing numbers that were not produced under comparable
+conditions, and the questions that decide the outcome in practice --- how large the input has
+to be before a compiler pays for itself, what a technique costs on the code it does not
+accelerate, whether two of them compose --- are usually not answered at all.
+
+This paper measures that menu under the conditions set out in \S\ref{sec:method}. What we set
+out to produce is a table indexed by \emph{what the workload does} rather than by tool, whose
+entries
+say \emph{what helped, by how much, and what it cost}: compute-bound work, branchy and
+pointer-heavy work, object-oriented and allocation-heavy work, mixed pipelines, and the
+system level below all of them. Table~\ref{tab:decision} is that table, and every row of it
+is produced by the artifact accompanying this paper. Concretely, the contributions are:
+
+\begin{enumerate}[leftmargin=1.4em,itemsep=1pt]
+  \item A measurement setup (\S\ref{sec:method}) in which all timing is done by
+        \code{pyperf} and every claim that two configurations are the same carries a
+        significance test, together with a correctness gate: an implementation is timed only
+        after it reproduces the reference result at full problem size.
+  \item Eight measured questions (\S\ref{sec:rq1}--\S\ref{sec:rq8}), each answered with
+        code, a benchmark and a figure, and each closed with the practical rule it supports.
+  \item A cross-technology comparison over six kernels --- three compute-bound, three
+        branchy/allocating --- in seven implementations, which separates the effect of
+        \emph{compilation} from the effect of \emph{data representation} and puts the
+        boundary between the two classes at allocation rather than at branching.
+  \item A machine-code account of what compiler flags actually change (\S\ref{sec:rq1b}):
+        the disassembly of every flag variant is hashed, which shows that most of the flags
+        usually recommended emit byte-identical code for these kernels, and that the one
+        effect worth several times the run time belongs to a dependency chain rather than to
+        a flag --- demonstrated by reproducing it in the source at unchanged flags.
+  \item A measurement-based maturity report on Meta's Cinder fork and CinderX, built from
+        source with identical configure flags against CPython 3.14.6, in \emph{both} of
+        CinderX's build configurations, covering the JIT, Static Python, lazy imports, the
+        parallel garbage collector and lightweight frames (\S\ref{sec:rq4}). Measuring the
+        adaptive configuration at all first required completing it: the specialising path for
+        static opcodes was carried across to 3.14 without the handlers it specialises into, so
+        Static Python could not execute a single specialisation. The missing half is supplied
+        in the artifact and verified against CinderX's own 3910-test static suite.
+  \item An artifact (\S\ref{sec:repro}) that regenerates every figure and table here from the
+        \code{pyperf} result files.
+\end{enumerate}
+
+\section{Related work and the questions we measure}
+\label{sec:related}
+
+Comparative performance work on Python implementations is usually one of three kinds.
+(i)~Benchmark-suite reports for a single implementation: the CPython \code{pyperformance}~\cite{pyperformance}
+results that accompany each release, and the PyPy speed pages~\cite{pypyspeed}. These are rigorous and
+longitudinal, but they compare an implementation with itself over time, not one acceleration
+strategy with another. (ii)~Documentation for an individual accelerator --- Numba, Cython,
+Codon --- which demonstrates the kernels the tool is good at, by design. (iii)~Practitioner
+articles that time one kernel two or three ways; useful as hypotheses, but typically stating no
+platform, no input size and no protocol, and no cost.
+
+What is comparatively rare, and what this paper does, is a study that (a)~holds the workload
+fixed while varying the acceleration technology, (b)~holds the technology fixed while varying
+the runtime, (c)~reports the same statistics for both, and (d)~quantifies the price of each
+technique alongside its gain. The measurement tooling is standard where standard tooling
+exists: all timing is \code{pyperf}~\cite{pyperf}, the benchmark runner used for CPython's
+own performance work, so the protocol below is its protocol rather than one of our own.
+
+The eight questions follow the workload classes of \S\ref{sec:intro}. Each section states its
+question, describes the experiment, and closes with what the numbers support.
+
+\begin{description}[leftmargin=2.6em,itemsep=1pt,font=\normalfont\bfseries]
+  \item[Q1] How much do JIT compilation and native code actually buy on compute-bound
+        kernels, and is the win the language, the compiler, or the freedom the compiler is
+        given (Q1b)? What does the compilation itself cost before it pays (Q1c)?
+  \item[Q2] Branchy and pointer-heavy code resists compilation. Which property of such code
+        is responsible, and how much does moving it out of Python return?
+  \item[Q3] What did the interpreter's own evolution (3.10 $\to$ 3.14: specialising
+        bytecode, immortal objects, allocator work) deliver for object-heavy code?
+  \item[Q4] Cinder and CinderX offer a JIT, a static typing mode, a parallel collector,
+        lightweight frames and lazy imports. Which of them pay off, and at what cost?
+  \item[Q5] Free-threaded scaling, and the single-thread price of the build that allows it.
+  \item[Q6] The interpreter as a C program: what PGO, LTO and architecture flags are worth on
+        one source tree, and what its own tier-2 JIT is worth (Q6b).
+  \item[Q7] Composition on a realistic mixed pipeline.
+  \item[Q8] PyPy on the same kernels.
+\end{description}
+
+\section{Methodology}
+\label{sec:method}
+
+\paragraph{The machine.}
+One, described in Table~\ref{tab:platform}, and every number in this paper comes from it ---
+including the Cinder and CinderX measurements of \S\ref{sec:rq4}, which need a Linux toolchain
+and get one here natively. A single host is what makes the results in this paper comparable
+with each other rather than only within sections.
+
+Two properties of it are measurement decisions rather than description, and a third is
+inherited from \code{pyperf}'s own tuned state. First, the frequency
+governor is fixed at \code{performance} and turbo is \emph{disabled}: a turbo clock is by
+construction not constant --- it depends on temperature, on how many cores are busy, and on how
+long the load has lasted --- and a study whose conclusions include ``these two configurations
+are indistinguishable'' cannot rest on a clock that drifts. The cost is absolute speed, and it
+is paid deliberately. Second, the CPU has cores of two performance classes, so every
+single-threaded benchmark is pinned to the performance class; without that, the same benchmark
+can be timed on one class in one worker process and the other class in the next, and the
+difference lands in the dispersion. The thread-scaling study of \S\ref{sec:rq5} is the one
+exception, since it sweeps more threads than that class has cores. Third, address-space
+randomisation is left \emph{on}, as \code{pyperf}'s own tuning advice requires:
+the argument for measuring across many processes is that layout, allocator state and hash seed
+differ between them, and disabling randomisation would remove exactly the variance that
+argument depends on. Table~\ref{tab:platform} reports all three as \code{pyperf} observed them
+at run time, not as we intended them.
+
+\begin{table}[t]
+  \centering
+  \caption{The measurement host. Every field is read back from an artefact the run produced:
+  the machine description written on the host itself, and \code{pyperf}'s per-run metadata.}
+  \label{tab:platform}
+  \small
+  \input{tables/t4_platforms.tex}
+\end{table}
+
+\paragraph{Timing protocol.}
+Every timed number in this paper is produced by \code{pyperf}~\cite{pyperf}, whose protocol we
+use as it comes: for each
+benchmark it calibrates an inner loop count until one value takes at least 100\,ms, then runs
+\textbf{twenty independent worker processes}, each of which discards a warm-up value and keeps
+three, giving sixty values per benchmark. Not every suite can afford twenty in one go: where one
+value is a kernel of milliseconds to seconds the count is ten. The compute, flag and branchy
+suites are then run twice with the benchmark order reversed and both passes appended into one
+file --- thirty values per pass, sixty in the file, from twenty processes, and a direct check
+that the two passes agree; the CinderX, Static Python, collector-scale, pipeline and
+break-even suites are a single pass of ten processes: thirty values.
+Thread scaling, where one value is a full multi-second run, uses five processes in a single
+pass: fifteen values. On an interpreter that reports a JIT --- PyPy and the \code{jit} build ---
+\code{pyperf} switches itself to six processes of ten values, and we let it. The count is
+recorded with every result, and what matters is that it is always several separate processes,
+never one. Process-level
+repetition is the part that matters and the part a hand-written in-process timer cannot
+provide: address-space layout, allocator state, hash seed and code layout differ per process,
+and a dispersion figure computed inside one process does not include any of them. We report
+the median and the relative median absolute deviation.
+
+\code{pyperf} also applies its own stability criterion --- 95\% confidence of under 1\%
+variation --- and warns when a benchmark misses it. That criterion is written for a tuned Linux
+machine and this host cannot hold a clock that steady.
+Across the 69 benchmarks of the compute suite the relative MAD is \meas{madagg:b1_compute:median}{0.2}\% at the median and \meas{mad:b1_compute-pypy311:call_overhead/cython}{4.8}\%
+at worst, and about a fifth carry the warning. Rather than claim a criterion we did not meet, we
+state the resolution: differences above roughly 10\% are resolved by these measurements,
+differences of a few per cent are not resolved by a pair of medians, and where the paper needs
+one it uses a significance test instead.
+
+Two kinds of measurement need more than a callable. Workloads that consume or mutate their
+input, such as a garbage-collection pause or a pipeline stage, are registered through
+\code{bench\_time\_func}, where the rebuild happens inside the loop but outside the timed
+region, so the setup is never counted. Whole-process costs such as interpreter start-up and
+import latency go through \code{bench\_command}, which times the process itself: a timer
+inside the process cannot observe the part of start-up that precedes it.
+
+Where the paper says that two configurations do not differ, that is \code{pyperf}'s
+significance test (Student's $t$ at 95\%) over the two sets of values, not an inspection of
+two rounded numbers. The
+specialisation study of \S\ref{sec:rq3} runs at a \emph{fixed} loop count of 200 rather than a
+calibrated one: it times a single function call of a few microseconds, and reaching
+\code{pyperf}'s 100\,ms target would mean tens of thousands of fresh compilations inside one
+value. One value there is roughly \meas{dur:b3_spec-v310:median}{75}\,ms on 3.10 rising to roughly \meas{dur:b3_spec-v314:median}{103}\,ms on 3.14, of which
+roughly 1\,\% is the timed calls, so those
+numbers carry more relative noise than the rest of the paper and are read as a curve rather
+than as individual points.
+
+\paragraph{Correctness gate.}
+Kernels are defined once in Python (\code{kernels\_py.py}, \code{branchy\_py.py}); every
+other implementation must reproduce the reference value before it is timed. A mismatch is
+recorded as a result (\code{wrong\_result}) instead of a time. The single exception is
+\code{fastmath}-style floating-point reassociation, which is allowed a $10^{-3}$ relative
+tolerance with the observed deviation stored alongside the timing; \S\ref{sec:rq1b}
+reports it explicitly.
+
+\paragraph{What is held constant.}
+Within a research question exactly one factor varies: the implementation technology
+(\S\ref{sec:rq1}, \S\ref{sec:rq2}), the compiler flag set of otherwise identical C sources
+(\S\ref{sec:rq1b}), the interpreter version (\S\ref{sec:rq3}), the runtime and its
+features (\S\ref{sec:rq4}), the GIL configuration (\S\ref{sec:rq5}), or the interpreter's
+own build flags (\S\ref{sec:rq6}). Data layout is treated as part of an implementation:
+pure Python uses lists, the compiled and native implementations use contiguous
+\code{float64} buffers, exactly as an engineer adopting them would. Where the conversion
+cost between the two matters, it is measured and reported separately
+(\S\ref{sec:rq2}, \S\ref{sec:rq7}).
+
+\paragraph{Machine drift.}
+A machine that moves while it is measuring turns elapsed time into an apparent effect, which is
+why the protocol above is not negotiable: a measurement that takes all of its samples
+consecutively cannot tell the two apart, and an early pass of ours did exactly that, as the list
+below of what the protocol caught records. \code{pyperf}'s design defends against per-process
+variation and not against drift, and the two are easy to conflate. The worker
+processes remove everything that varies \emph{per process} --- the four properties listed
+in the timing protocol above --- and that is a confound a single-process timer cannot even see. They do \emph{not} spread a benchmark over the run: \code{pyperf} finishes all
+workers of one benchmark before starting the next, so two benchmarks compared across a
+long run are still separated in time, and a machine that is slowing down will show that
+separation as an effect.
+
+Two things address the part that remains. Every suite except the CinderX, Static Python
+and Codon ahead-of-time runs registers a \emph{machine probe} --- a
+fixed native compute loop called through \code{ctypes}, whose cost does not depend on the
+interpreter --- timed by \code{pyperf} like any other benchmark, so comparing it between two
+runs is a direct test of whether the machine changed, with the same significance test as
+everything else. And where a comparison turns on a few per cent, the two configurations are
+measured \emph{alternately} rather than one after the other: short invocations, order swapped
+each round, appended into one file each (\code{bench/b1\_compute/ab\_flags.sh}), so both sample
+the same stretch of time. That protocol exists but no number in this paper is derived from it:
+\S\ref{sec:rq1b}'s drift control is the two-pass reversed plan above.
+
+\paragraph{Statistics and noise.}
+Medians with relative MAD, rather than means with standard deviations, because the
+distributions are right-skewed by scheduler noise. Every run was made on an idle, mains-powered
+machine with no other workload --- which this study learned to check rather than assume,
+at the cost recorded in \S\ref{sec:threats}. Absolute numbers are specific to this machine and to its fixed,
+turbo-disabled clock; what this paper reports are ratios.
+
+\paragraph{What the protocol caught.}
+Three concrete errors were found by the protocol rather than by inspection, which is the
+argument for having one. (i)~An early pass took its samples consecutively per configuration
+and produced a clean, plausible and \emph{false} result: pure-Python kernels appeared to slow
+down monotonically from 3.11 to 3.14, purely as a function of position in the run. (ii)~The parallel variants of the pipeline in
+\S\ref{sec:rq7} produced a checksum that differed from the reference and differed between
+runs --- a data race on a \code{ctypes} output cell shared by four threads. A timing-only benchmark would have reported the racing variant as a speedup, because losing
+updates makes the work smaller; the correctness gate rejected it before it was ever timed. (iii)~The first specialisation-warm-up measurement
+produced a flat curve on every version, because one code object was compiled and then reused
+across repetitions, so only the first repetition was ever cold. Compiling per repetition, and
+replacing the loop body with straight-line code so that each instruction executes once per
+call, made the effect visible (\S\ref{sec:rq3}).
+
+% ---------------------------------------------------------------- RESULTS
+\input{sections/results.tex}
+
+\input{sections/discussion.tex}
+
+\section{Threats to validity}
+\label{sec:threats}
+
+\paragraph{One machine, and what that does not license.} Every measurement here comes from one
+x86-64 laptop. Absolute times are properties of that machine; the ratios are what travel, and
+even they travel only as far as the mechanism behind them does. The machine-code evidence of
+\S\ref{sec:rq1b} is the clearest case: which flags emit identical code is a property of this
+compiler and this target, and we can show that directly rather than warn about it in the
+abstract. So the finding to carry away is not a recommendation about a flag; it is that what a
+flag does to the emitted code has to be re-established per compiler and per target, and that
+the disassembly settles the question in seconds.
+
+\paragraph{Core classes, and where pinning stops helping.} Pinning the single-threaded suites to
+the performance class (\S\ref{sec:method}) removes the largest source of unexplained dispersion
+but not all of it: nothing is \emph{excluded} from those cores, so the operating system and any
+other work on the machine may still be scheduled there. Real isolation would need the cores
+reserved at boot, which we did not do. The thread-scaling study of \S\ref{sec:rq5} cannot be
+confined to the performance class --- it sweeps up to eight threads and that class has six cores
+--- so it runs on CPUs 0--13: the six performance cores and eight of the ten efficiency cores of
+Table~\ref{tab:platform}. Its curve is reported whole rather than reduced to a
+single
+``$N\times$'', because past six threads the added threads are on slower cores.
+
+\paragraph{Kernel selection, and what six kernels cannot stand for.} Six kernels cannot
+represent all Python workloads. They were
+chosen to instantiate the workload classes of \S\ref{sec:intro}, and the
+compute/branchy split is deliberately extreme so that the technologies' behaviour
+separates.
+
+\paragraph{Library versions, and which row is a library result.} Only \code{pyperf} is pinned by the artifact's
+environment setup; the Numba, Cython and NumPy versions are whatever that setup
+installed on the day it ran, the Rust toolchain is whatever \code{cargo} was already on the
+host's path, and no result record carries any of them. NumPy's \code{matmul}
+dispatches to a vendor BLAS; that row is a library data point, not a compiler data point,
+and is labelled accordingly.
+
+\paragraph{What the machine probe cannot see.} The machine probe of \S\ref{sec:method} is
+single-threaded, and this study found the limit the hard
+way: during one pass, other work on the machine slowed a memory-bound NumPy benchmark by
+$13$--$34\%$ while the probe reported the host as unmoved to within $0.03\%$. It was not
+wrong --- contention on the cores a single-threaded loop does not use is invisible to it by
+construction. Benchmarks that are parallel or bandwidth-bound therefore carry a residual
+exposure that the probe does not cover, and the affected suite was re-measured on an idle
+machine rather than reported as it stood.
+
+\paragraph{Machine steadiness, and what is still exposed.} The machine probe shows this host
+moving very little: across the 46 result files that carry it, the slowest invocation is
+$\meas{ratio:b1_compute-pypy311:machine_probe/c_busy|b5_startup-jit:machine_probe/c_busy}{1.014}\times$ the fastest and the ninetieth percentile is $\meas{probeagg:p90}{1.009}\times$. That is a measured
+statement rather than an assumption, and it is what the probe is for. Comparisons \emph{within} one suite
+invocation are the least exposed: the suite is minutes long and its benchmarks are adjacent in
+time. Comparisons \emph{across} invocations are the most exposed, and the version sweep is
+exactly that shape --- six separate runs of the same suite, launched in sequence, with the
+cross-version ratios read across them. The machine probe bounds that: it is the same benchmark
+in all six, so its spread across the six runs is a direct measurement of how much the host
+moved while they were collected, and it is reported with the sweep. Where a claim turns on less
+than that spread, it is reported with that spread beside it (\S\ref{sec:method}); where it
+turns on a factor, the drift is not the binding uncertainty. What remains is the resolution stated in
+\S\ref{sec:method}: adequate for the factors this paper's conclusions turn on, and not adequate
+for a few per cent, which is why the few claims that turn on a
+few per cent carry a significance verdict.
+
+\paragraph{Interpreter provenance.} Building every interpreter here (\S\ref{sec:rq3}) is a
+restriction as well as the control it was chosen for: what the paper measures is what these
+sources do when built this way, and an interpreter obtained some other way is a different
+binary whose behaviour is not established here.
+
+\section{Reproducibility}
+\label{sec:repro}
+
+The artifact accompanying this paper contains the measurement layer, all kernels in all
+languages, the interpreter build scripts, the raw \code{pyperf} result
+files and the figure and table generators. The full sequence is:
+
+\begin{Verbatim}[fontsize=\small,xleftmargin=1em]
+bash bench/host_topology.sh               # CPU classes -> affinity + results/host.json
+OUT=<dir> bash bench/build_uniform.sh     # every interpreter: one compiler, one
+                                          # configure line, 3.10-3.14 + free-threaded
+UNIFORM=<dir> bash bench/setup_env.sh     # venvs on those interpreters; build_all.sh
+                                          # builds into them, so this comes first
+CODON_DIR=<dir> PYPY=<pypy>/bin/pypy3 \
+  bash bench/build_all.sh                 # Cython, pybind11, Codon, C (6 flag sets +
+                                          # the accumulator ladder), Rust
+OUT=<dir> LLVM19=<llvm19>/bin \
+  bash bench/b5_buildflags/build_real.sh  # the seven build configurations; the tier-2
+                                          # JIT one needs LLVM 19
+REAL=<dir> bash bench/setup_env.sh        # and again, for those seven: they are built
+                                          # without pip, so this pass has to come after
+                                          # build_real.sh
+bash bench/b2_branchy/codegen_check.sh    # results/codegen/summary.json, for the
+                                          # C-vs-Rust instruction-count table
+UNIFORM=<dir> REAL=<dir> PYPY=<pypy>/bin/pypy3 bash bench/run_campaign.sh \
+    compute branchy versions spec threads builds pipeline pypy
+OUT=/path/cinder bash bench/b6_cinderx/build_cinderx.sh
+CINDER=/path/cinder bash bench/b6_cinderx/run_b6_native.sh   # both CinderX configurations
+CINDER=/path/cinder bash bench/b6_cinderx/run_jitopts.sh     # the JIT-option ablation
+<venv>/bin/python bench/b6_cinderx/run_gc_scale.py --label ...  # the collector sweep
+<venv>/bin/python bench/plots/check_overlaps.py   # layout gate; must exit 0
+<venv>/bin/python bench/plots/make_figures.py
+<venv>/bin/python bench/plots/make_tables.py
+<venv>/bin/python bench/plots/summarize.py        # every number quoted in the text
+\end{Verbatim}
+
+\noindent
+Every figure and table is written by those generators from \code{results/pyperf/}, and every
+number quoted in the prose is derived from the same files rather than from a note taken while
+running: \code{summarize.py} prints the medians and ratios next to the records they come from,
+and the significance verdicts are \code{pyperf compare\_to} over the two sets of values. A result file is pyperf's own format, so it can also be read with \code{pyperf
+stats} and \code{pyperf compare\_to} without any of our code. Each benchmark carries its suite,
+kernel, implementation, parameters and configuration label in its metadata, and each suite
+writes a sidecar holding the correctness verdicts, the variants that could not be built, the
+host description and the structural observations that are not timings --- so that nothing
+pyperf did not measure can be mistaken for something it did.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+\input{sections/conclusion.tex}
+
+\begin{thebibliography}{9}
+\small
+\bibitem{pyperf} V.~Stinner. \emph{pyperf: toolkit to write, run and analyze benchmarks}.
+  Version 2.10.0. \url{https://github.com/psf/pyperf}.
+\bibitem{pyperformance} Python Software Foundation. \emph{pyperformance: the Python
+  benchmark suite}. \url{https://github.com/python/pyperformance}.
+\bibitem{cinder} Meta Platforms. \emph{Cinder: Meta's performance-oriented fork of CPython,
+  and CinderX, the extension package that carries its JIT, Static Python, parallel collector
+  and lazy imports}. \url{https://github.com/facebookincubator/MetaPython} and
+  \url{https://github.com/facebookincubator/cinderx}.
+\bibitem{pypy} The PyPy Team. \emph{PyPy 3.11 (v7.3.20)}. \url{https://pypy.org}.
+\bibitem{numpy-drop-pypy} NumPy contributors. \emph{MAINT: drop pypy} --- pull request \#30764,
+  merged 3 February 2026. \url{https://github.com/numpy/numpy/pull/30764}.
+\bibitem{numba} S.~K.~Lam, A.~Pitrou and S.~Seibert. \emph{Numba: a LLVM-based Python JIT
+  compiler}. LLVM-HPC '15.
+\bibitem{cython} S.~Behnel et al. \emph{Cython: C-extensions for Python}.
+  \url{https://cython.org}.
+\bibitem{codon} A.~Shajii, G.~Ramirez, H.~Smajlovi\'c et al. \emph{Codon: A Compiler for
+  High-Performance Pythonic Applications and DSLs}. CC '23.
+\bibitem{pep703} S.~Gross. \emph{PEP 703 --- Making the global interpreter lock optional
+  in CPython}. 2023.
+\bibitem{pep659} M.~Shannon. \emph{PEP 659 --- Specializing adaptive interpreter}. 2021.
+\bibitem{pep744} B.~Bucher and S.~Ostrowski. \emph{PEP 744 --- JIT compilation}. 2024.
+  Draft.
+\bibitem{pep683} E.~Snow and E.~Elizondo. \emph{PEP 683 --- Immortal objects, using a
+  fixed refcount}. 2022.
+\bibitem{pep523} B.~Cannon and D.~Viehland. \emph{PEP 523 --- Adding a frame
+  evaluation API to CPython}. 2016.
+\bibitem{pypyspeed} The PyPy Team. \emph{PyPy speed centre}. \url{https://speed.pypy.org}.
+\end{thebibliography}
+
+\end{document}

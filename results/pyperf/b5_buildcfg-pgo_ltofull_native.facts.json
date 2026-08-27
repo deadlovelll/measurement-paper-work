@@ -1,0 +1,54 @@
+{
+ "suite": "b5_buildcfg",
+ "label": "pgo_ltofull_native",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/realbuilds/w_pgo_ltofull_native/bin/python3.14",
+  "version": "3.14.6+",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/realbuilds/w_pgo_ltofull_native' '--without-ensurepip' '--enable-optimizations' '--with-lto=full' 'CC=/usr/bin/clang' 'CFLAGS=-march=native'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -march=native -fno-semantic-interposition -flto=full -g -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=/home/timofei/mp-x86/realbuilds/work/w_pgo_ltofull_native/code.profclangd -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "create_plain_obj/pgo_ltofull_native",
+  "create_slots_obj/pgo_ltofull_native",
+  "create_dict/pgo_ltofull_native",
+  "create_tuple/pgo_ltofull_native",
+  "attr_get/pgo_ltofull_native",
+  "attr_get_slots/pgo_ltofull_native",
+  "attr_set/pgo_ltofull_native",
+  "method_call/pgo_ltofull_native",
+  "int_arith/pgo_ltofull_native",
+  "float_arith/pgo_ltofull_native",
+  "list_append/pgo_ltofull_native",
+  "dict_setitem/pgo_ltofull_native",
+  "str_format_join/pgo_ltofull_native",
+  "func_call/pgo_ltofull_native",
+  "exception_roundtrip/pgo_ltofull_native",
+  "gc_collect_100k_cycles/pgo_ltofull_native",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [],
+ "facts": {
+  "version": "3.14.6+",
+  "implementation": "CPython",
+  "refcount_none": 3221225472,
+  "refcount_true": 3221225472,
+  "refcount_small_int": 3221225472,
+  "refcount_empty_str": 3221225472,
+  "immortal_singletons": true,
+  "gil_enabled": true,
+  "blocks_per_plain_obj": 3.9619,
+  "blocks_per_slots_obj": 3.96185,
+  "maxrss_mb": 30.9
+ }
+}

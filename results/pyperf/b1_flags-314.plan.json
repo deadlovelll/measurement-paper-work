@@ -1,0 +1,280 @@
+{
+ "suite": "b1_flags",
+ "params": {
+  "vec_n": 1000000,
+  "mb_w": 200,
+  "mb_h": 150,
+  "mb_iter": 30,
+  "mat_n": 96
+ },
+ "interp": {
+  "executable": "/home/timofei/Downloads/Telegram Desktop/measurement-paper-work/measurement-paper-work/bench/venvs/u314/bin/python",
+  "version": "3.14.6",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/uniform/v314' '--enable-optimizations' '--with-ensurepip=install' 'CC=/usr/bin/clang'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -fno-semantic-interposition -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=/home/timofei/mp-x86/uniform/src/v314/code.profclangd -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "reference": {
+  "arraysum": "71357142.85714258",
+  "mandelbrot": "302858",
+  "matmul": "5307639.0"
+ },
+ "plan": [
+  {
+   "case": "arraysum",
+   "impl": "O0",
+   "kind": "cflags",
+   "name": "O0",
+   "note": "clang -O0",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O0",
+   "kind": "cflags",
+   "name": "O0",
+   "note": "clang -O0",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "O0",
+   "kind": "cflags",
+   "name": "O0",
+   "note": "clang -O0",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "O2",
+   "kind": "cflags",
+   "name": "O2",
+   "note": "clang -O2",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O2",
+   "kind": "cflags",
+   "name": "O2",
+   "note": "clang -O2",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "O2",
+   "kind": "cflags",
+   "name": "O2",
+   "note": "clang -O2",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "O3",
+   "kind": "cflags",
+   "name": "O3",
+   "note": "clang -O3",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O3",
+   "kind": "cflags",
+   "name": "O3",
+   "note": "clang -O3",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "O3",
+   "kind": "cflags",
+   "name": "O3",
+   "note": "clang -O3",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "O3native",
+   "kind": "cflags",
+   "name": "O3native",
+   "note": "clang -O3 -march=native",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O3native",
+   "kind": "cflags",
+   "name": "O3native",
+   "note": "clang -O3 -march=native",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "O3native",
+   "kind": "cflags",
+   "name": "O3native",
+   "note": "clang -O3 -march=native",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "O3native_novec",
+   "kind": "cflags",
+   "name": "O3native_novec",
+   "note": "clang -O3 -march=native -fno-vectorize -fno-slp-vectorize",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O3native_novec",
+   "kind": "cflags",
+   "name": "O3native_novec",
+   "note": "clang -O3 -march=native -fno-vectorize -fno-slp-vectorize",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "O3native_novec",
+   "kind": "cflags",
+   "name": "O3native_novec",
+   "note": "clang -O3 -march=native -fno-vectorize -fno-slp-vectorize",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "O3native_ffast",
+   "kind": "cflags",
+   "name": "O3native_ffast",
+   "note": "clang -O3 -march=native -ffast-math",
+   "deviation": 3.132376226934955e-15,
+   "tol": 0.001
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "O3native_ffast",
+   "kind": "cflags",
+   "name": "O3native_ffast",
+   "note": "clang -O3 -march=native -ffast-math",
+   "deviation": 4.6226284265233213e-05,
+   "tol": 0.001
+  },
+  {
+   "case": "matmul",
+   "impl": "O3native_ffast",
+   "kind": "cflags",
+   "name": "O3native_ffast",
+   "note": "clang -O3 -march=native -ffast-math",
+   "deviation": 0.0,
+   "tol": 0.001
+  },
+  {
+   "case": "arraysum",
+   "impl": "accum_acc1",
+   "kind": "accum",
+   "name": "acc1",
+   "note": "clang -O2, 1 independent accumulator(s) written in the source",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "accum_acc2",
+   "kind": "accum",
+   "name": "acc2",
+   "note": "clang -O2, 2 independent accumulator(s) written in the source",
+   "deviation": 1.8794257361609727e-15,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "accum_acc4",
+   "kind": "accum",
+   "name": "acc4",
+   "note": "clang -O2, 4 independent accumulator(s) written in the source",
+   "deviation": 7.726528026439555e-15,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "accum_acc8",
+   "kind": "accum",
+   "name": "acc8",
+   "note": "clang -O2, 8 independent accumulator(s) written in the source",
+   "deviation": 3.550026390526282e-15,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "numba_plain",
+   "kind": "numba",
+   "name": "plain",
+   "note": "numba njit(fastmath=False)",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numba_plain",
+   "kind": "numba",
+   "name": "plain",
+   "note": "numba njit(fastmath=False)",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "matmul",
+   "impl": "numba_plain",
+   "kind": "numba",
+   "name": "plain",
+   "note": "numba njit(fastmath=False)",
+   "deviation": 0.0,
+   "tol": 1e-09
+  },
+  {
+   "case": "arraysum",
+   "impl": "numba_fastmath",
+   "kind": "numba",
+   "name": "fastmath",
+   "note": "numba njit(fastmath=True)",
+   "deviation": 3.132376226934955e-15,
+   "tol": 0.001
+  },
+  {
+   "case": "mandelbrot",
+   "impl": "numba_fastmath",
+   "kind": "numba",
+   "name": "fastmath",
+   "note": "numba njit(fastmath=True)",
+   "deviation": 4.6226284265233213e-05,
+   "tol": 0.001
+  },
+  {
+   "case": "matmul",
+   "impl": "numba_fastmath",
+   "kind": "numba",
+   "name": "fastmath",
+   "note": "numba njit(fastmath=True)",
+   "deviation": 0.0,
+   "tol": 0.001
+  }
+ ],
+ "problems": []
+}

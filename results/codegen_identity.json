@@ -1,0 +1,33 @@
+{
+ "generated_by": "bench/b1_compute/codegen_diff.sh",
+ "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+ "disassembler": "Ubuntu LLVM version 18.1.3",
+ "arch": "x86_64",
+ "native_flag": "-march=native",
+ "kernels": {
+  "c_arraysum": {
+   "O0": {"hash": "5efa5b3b261a", "instructions": 23, "fp_ops": 1, "simd_ops": 0, "q_loads": 0}
+,   "O2": {"hash": "812612ae832c", "instructions": 38, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3": {"hash": "812612ae832c", "instructions": 38, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3native": {"hash": "faf4f89ca5c1", "instructions": 37, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3native_novec": {"hash": "faf4f89ca5c1", "instructions": 37, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3native_ffast": {"hash": "b6e2c08c10c0", "instructions": 41, "fp_ops": 10, "simd_ops": 9, "q_loads": 0}
+  }
+,  "c_mandelbrot": {
+   "O0": {"hash": "838d8be67158", "instructions": 95, "fp_ops": 16, "simd_ops": 0, "q_loads": 0}
+,   "O2": {"hash": "cfef92e3eb32", "instructions": 68, "fp_ops": 17, "simd_ops": 0, "q_loads": 5}
+,   "O3": {"hash": "5fce43d3c340", "instructions": 67, "fp_ops": 17, "simd_ops": 0, "q_loads": 5}
+,   "O3native": {"hash": "7aec5da4281b", "instructions": 121, "fp_ops": 32, "simd_ops": 0, "q_loads": 6}
+,   "O3native_novec": {"hash": "7aec5da4281b", "instructions": 121, "fp_ops": 32, "simd_ops": 0, "q_loads": 6}
+,   "O3native_ffast": {"hash": "c95d3f6e5edf", "instructions": 121, "fp_ops": 33, "simd_ops": 0, "q_loads": 3}
+  }
+,  "c_matmul": {
+   "O0": {"hash": "60a942f1f3e2", "instructions": 57, "fp_ops": 2, "simd_ops": 0, "q_loads": 0}
+,   "O2": {"hash": "a9b46b9984f0", "instructions": 92, "fp_ops": 10, "simd_ops": 0, "q_loads": 0}
+,   "O3": {"hash": "a9b46b9984f0", "instructions": 92, "fp_ops": 10, "simd_ops": 0, "q_loads": 0}
+,   "O3native": {"hash": "89aea9c0b430", "instructions": 96, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3native_novec": {"hash": "89aea9c0b430", "instructions": 96, "fp_ops": 9, "simd_ops": 0, "q_loads": 0}
+,   "O3native_ffast": {"hash": "5ddcc4505fe6", "instructions": 133, "fp_ops": 10, "simd_ops": 59, "q_loads": 4}
+  }
+ }
+}

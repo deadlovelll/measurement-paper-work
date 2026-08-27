@@ -1,0 +1,69 @@
+{
+ "suite": "b2_branchy",
+ "label": "pypy311",
+ "interp": {
+  "executable": "/home/timofei/mp-x86/pypy/bin/pypy3",
+  "version": "3.11.13",
+  "implementation": "PyPy",
+  "compiler": "",
+  "gil_enabled": null,
+  "free_threaded": false,
+  "config_args": null,
+  "core_cflags": null
+ },
+ "machine": {
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "system": "Linux",
+  "cpu_count": 16,
+  "cpu_brand": "Intel(R) Core(TM) Ultra 7 255H"
+ },
+ "registered": [
+  "bfs/rust_ctypes",
+  "binarytrees/rust_ctypes",
+  "tokenize/rust_ctypes",
+  "bfs/c_ctypes",
+  "binarytrees/c_ctypes",
+  "tokenize/c_ctypes",
+  "bfs/cython",
+  "binarytrees/cython",
+  "tokenize/cython",
+  "bfs/cpython_flat",
+  "bfs/cpython_loop",
+  "binarytrees/cpython_loop",
+  "tokenize/cpython_loop",
+  "machine_probe/c_busy"
+ ],
+ "gate_failures": [
+  {
+   "case": "tokenize",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  },
+  {
+   "case": "bfs",
+   "impl": "numba",
+   "status": "unsupported",
+   "note": "ModuleNotFoundError: No module named 'numba'"
+  }
+ ],
+ "facts": {
+  "params": {
+   "tok_n": 2000000,
+   "tree_depth": 18,
+   "bfs_n": 500000
+  },
+  "reference": {
+   "tokenize": "(1149705, 14508581)",
+   "binarytrees": "262143",
+   "bfs": "5841004"
+  }
+ }
+}

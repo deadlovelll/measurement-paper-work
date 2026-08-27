@@ -1,0 +1,15 @@
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{2}{c}{tokenize ($2{\cdot}10^6$ B)} & \multicolumn{2}{c}{binary trees (d{=}18)} & \multicolumn{2}{c}{BFS ($5{\cdot}10^5$ nodes)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+implementation & ms & $\times$ & ms & $\times$ & ms & $\times$ \\
+\midrule
+CPython loop & 300.44 & 1.0 & 126.81 & 1.0 & 203.95 & 1.0 \\
+Cython & 24.25 & 12.4 & 25.86 & 4.9 & 20.54 & 9.9 \\
+Codon AOT & 25.75 & 11.7 & 7.37 & 17.2 & 21.90 & 9.3 \\
+Numba & 26.11 & 11.5 & 32.36 & 3.9 & 23.17 & 8.8 \\
+Codon JIT & 26.17 & 11.5 & 7.32 & 17.3 & 23.03 & 8.9 \\
+C (ctypes) & 22.29 & 13.5 & 7.05 & 18.0 & 20.62 & 9.9 \\
+Rust (ctypes) & 22.42 & 13.4 & 6.09 & 20.8 & 22.38 & 9.1 \\
+\bottomrule
+\end{tabular}

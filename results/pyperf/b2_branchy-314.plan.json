@@ -1,0 +1,144 @@
+{
+ "suite": "b2_branchy",
+ "params": {
+  "tok_n": 2000000,
+  "tree_depth": 18,
+  "bfs_n": 500000
+ },
+ "interp": {
+  "executable": "/home/timofei/Downloads/Telegram Desktop/measurement-paper-work/measurement-paper-work/bench/venvs/u314/bin/python",
+  "version": "3.14.6",
+  "implementation": "CPython",
+  "compiler": "Clang 18.1.3 (1ubuntu1)",
+  "gil_enabled": true,
+  "free_threaded": false,
+  "config_args": "'--prefix=/home/timofei/mp-x86/uniform/v314' '--enable-optimizations' '--with-ensurepip=install' 'CC=/usr/bin/clang'",
+  "core_cflags": "-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -fno-semantic-interposition -std=c11 -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wstrict-prototypes -Werror=implicit-function-declaration -fvisibility=hidden -fprofile-instr-use=/home/timofei/mp-x86/uniform/src/v314/code.profclangd -I./Include/internal -I./Include/internal/mimalloc -I. -I./Include -DPy_BUILD_CORE"
+ },
+ "reference": {
+  "tokenize": "(1149705, 14508581)",
+  "binarytrees": "262143",
+  "bfs": "5841004"
+ },
+ "reference_raw": {
+  "tokenize": [
+   1149705,
+   14508581
+  ],
+  "binarytrees": 262143,
+  "bfs": 5841004
+ },
+ "plan": [
+  {
+   "case": "tokenize",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "bfs",
+   "impl": "cpython_loop",
+   "note": "pure Python, __slots__ objects for the tree"
+  },
+  {
+   "case": "bfs",
+   "impl": "cpython_flat",
+   "note": "pure Python, flat preallocated lists instead of deque/dict"
+  },
+  {
+   "case": "tokenize",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "bfs",
+   "impl": "cython",
+   "note": "typed cython; tree nodes are still CPython objects"
+  },
+  {
+   "case": "tokenize",
+   "impl": "numba",
+   "note": "numba njit with NumPy-typed rewrites where expressible"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "numba",
+   "note": "numba njit with NumPy-typed rewrites where expressible"
+  },
+  {
+   "case": "bfs",
+   "impl": "numba",
+   "note": "numba njit with NumPy-typed rewrites where expressible"
+  },
+  {
+   "case": "tokenize",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "bfs",
+   "impl": "c_ctypes",
+   "note": "clang -O3 -march=native via ctypes; malloc per tree node"
+  },
+  {
+   "case": "tokenize",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  },
+  {
+   "case": "bfs",
+   "impl": "rust_ctypes",
+   "note": "rustc opt-level=3, lto=fat, target-cpu=native via ctypes; Box per node"
+  },
+  {
+   "case": "tokenize",
+   "impl": "codon_pyext",
+   "note": "Codon built ahead of time by `codon build -pyext`; the tree is a Codon class with a real pointer chase, not a jitclass and not a flat array"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "codon_pyext",
+   "note": "Codon built ahead of time by `codon build -pyext`; the tree is a Codon class with a real pointer chase, not a jitclass and not a flat array"
+  },
+  {
+   "case": "bfs",
+   "impl": "codon_pyext",
+   "note": "Codon built ahead of time by `codon build -pyext`; the tree is a Codon class with a real pointer chase, not a jitclass and not a flat array"
+  },
+  {
+   "case": "tokenize",
+   "impl": "codon_jit",
+   "note": "the same kernels under @codon.jit, compiled in-process at first call"
+  },
+  {
+   "case": "binarytrees",
+   "impl": "codon_jit",
+   "note": "the same kernels under @codon.jit, compiled in-process at first call"
+  },
+  {
+   "case": "bfs",
+   "impl": "codon_jit",
+   "note": "the same kernels under @codon.jit, compiled in-process at first call"
+  }
+ ],
+ "problems": []
+}

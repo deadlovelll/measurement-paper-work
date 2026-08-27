@@ -1,0 +1,147 @@
+\section{Обсуждение: таблица решений вместо рейтинга}
+\label{sec:discussion}
+
+Рекомендации в этой области обычно организованы по технологиям --- «здесь Numba, там C».
+Измерения говорят, что технология --- неверная \emph{первая} ось, по трём причинам, которые
+повторяются во всех восьми вопросах. Работающий индекс --- это то, что делает нагрузка, а
+технология и её цена стоят в клетках.
+
+\paragraph{1. На вычислительной работе технологии взаимозаменяемы, там, где доминируют
+аллокации, --- нет.} На скалярных
+вычислительных циклах Cython, Numba, C за двумя разными FFI и Rust совпадают на редукции с
+точностью до $\meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/numba}{0.2}\%$, а там, где не совпадают, расходятся на $\meas{pct:b1_compute-314:mandelbrot/rust_ctypes|b1_compute-314:mandelbrot/cython}{18}\%$ на одном ядре и в $\meas{ratio:b1_compute-314:matmul/c_ctypes|b1_compute-314:matmul/numba}{1.8}$~раза на
+другом, в обе стороны и без постоянного победителя --- против тех $32$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba}{128}\times$, которых стоит
+сама компиляция (\S\ref{sec:rq1}). Измерения поэтому между ними не выбирают, а то, чем этот выбор
+решается --- сложность сборки, отлаживаемость, владение кодом, --- лежит за пределами
+измеряемого здесь. Что \emph{действительно} различает
+результаты, так это класс, к которому относится нагрузка: те же четыре технологии охватывают
+$52$--$61\times$ на вычислительных ядрах и $7.3$--$13.6\times$ на ветвистых и с аллокациями
+(\S\ref{sec:rq2}), --- а внутри второго класса они и между собой перестают быть
+взаимозаменяемыми, расходясь в $3.7$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}$~раза ровно там, где выделяются мелкие объекты.
+
+\paragraph{2. Доминируют решения о том, что программе разрешено делать, а не о том, каким
+инструментом это делается.} Решение писать горячий цикл на языке, который вообще можно
+скомпилировать, стоит больше, чем любой выбор, сделанный внутри этого языка, --- кроме случая,
+когда пределом становится модель объектов: там обе величины одного порядка, потому что
+компиляция двоичных деревьев вообще даёт Cython $\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/cython}{4.9}\times$, а выбор реализации, владеющей
+собственной памятью, добавляет к этому ещё $3.5$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}$~раза (\S\ref{sec:rq2}), ---
+а распрямление структуры данных без компиляции цикла сделало наш обход графа на $\meas{pct:b2_branchy-314:bfs/cpython_flat|b2_branchy-314:bfs/cpython_loop}{12}\%$
+\emph{медленнее}. Отложить исполнение тел модулей стоит четырёх порядков задержки импорта (\S\ref{sec:rq4}) и
+меняет момент, когда всплывают ошибки импорта. Разрешить переассоциацию операций с
+плавающей точкой стоит $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$ на редукции, и это меняет результаты --- и никакого флага
+компилятора для этого не нужно, поскольку перегруппировка накопления в исходнике стоит
+$\meas{ratio:b1_flags-314:arraysum/accum_acc1|b1_flags-314:arraysum/accum_acc4}{2.74}\times$ при неизменных флагах (\S\ref{sec:rq1b}). Каждое из этих решений --- о том, что
+программе разрешено делать, и каждое доминирует над выбором инструмента, сделанным под ним. Флаги
+ниже этих решений их не заменяют: переход с \code{-O2} на \code{-O3} не стоил ничего измеримого на
+двух из трёх наших ядер и $\meas{pct:b1_flags-314:matmul/O2|b1_flags-314:matmul/O3}{0.1}\%$ на третьем, тогда как \code{-march=native}, единственный флаг,
+который порождаемый код действительно менял везде, сделал одно ядро в $\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/O3native}{1.25}$~раза быстрее, а другое
+--- в $\meas{ratio:b1_flags-314:matmul/O3native|b1_flags-314:matmul/O2}{1.80}$~раза \emph{медленнее} (\S\ref{sec:rq1b}).
+
+\paragraph{3. У каждого выигрыша есть цена, и именно цену обычно не сообщают.}
+JIT-компиляция стоила одной наблюдённой задержки в $\meas{fact:b1_breakeven-314:facts.numba_compile_s:ms}{215}$\,мс, а это 7 вызовов или 7335 вызовов
+работы в зависимости от размера входа (\S\ref{sec:rq1c}). Отказ от GIL стоит $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$
+однопоточной пропускной способности (\S\ref{sec:rq5}). Static Python стоит переписывания на
+примитивных типах и оказывается в $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}$~раза \emph{медленнее}, если не включить ещё и JIT
+(\S\ref{sec:rq4}). FFI стоит $59$--$\meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}$\,нс за пересечение против $\meas{med:b1_compute-314:call_overhead/python_function:ns}{31}$\,нс у вызова на чистом
+Python: бесплатно для ядра на $10\,\mu$с и настоящая цена на каждую запись (\S\ref{sec:rq2}).
+
+\medskip
+Таблица~\ref{tab:decision} --- это результат: классы нагрузок из \S\ref{sec:intro} с измеренным
+эффектом и ценой в каждой строке. Именно в таком виде мы и предложили бы её инженеру.
+
+\begin{table}[t]
+  \centering
+  \caption{Таблица решений по измерениям. Каждый множитель получен на единственном хосте
+    измерений из таблицы~\ref{tab:platform}, в колонке «цена» указано, что изменение приносит с
+    собой.}
+  \label{tab:decision}
+  \small
+  \begin{tabular}{p{0.21\linewidth}p{0.24\linewidth}p{0.16\linewidth}p{0.285\linewidth}}
+    \toprule
+    нагрузка & что сработало & измерено & цена / оговорка \\
+    \midrule
+    численный цикл по массиву
+      & любой компилируемый путь (Cython / Numba / C / Rust)
+      & $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/cython}{32}\times$
+      & шаг сборки, четыре пути здесь лежат в пределах $\meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/numba}{0.2}\%$ друг от друга \\
+    \dots{} и переассоциация допустима
+      & \code{fastmath} / \code{-ffast-math}
+      & ещё $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$
+      & результаты меняются (здесь на $4.6\cdot10^{-5}$) \\
+    операция, которая уже есть в библиотеке
+      & NumPy / поставляемый BLAS
+      & до $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numpy}{1495.9}\times$
+      & только там, где операция существует, $\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/numpy}{4.7}\times$, когда не подходит \\
+    ветвистый проход по плоским данным
+      & Cython или Numba
+      & $\meas{ratio:b2_branchy-314:tokenize/cpython_loop|b2_branchy-314:tokenize/cython}{12}\times$
+      & C и Rust впереди лишь на $8$--$\meas{pct:b2_branchy-314:tokenize/numba|b2_branchy-314:tokenize/c_ctypes}{17}\%$ \\
+    граф объектов с аллокациями
+      & аллокатор, отличный от CPython: C или Rust за FFI либо Codon
+      & $17.2$--$\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/rust_ctypes}{20.8}\times$ против $3.9$--$\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/cython}{4.9}\times$
+      & переписывание владения памятью или перекомпиляция, если исходник берёт Codon \\
+    нерегулярный обход графа
+      & компилировать его, одно плоское размещение выигрыша не даёт
+      & $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-314:bfs/cython}{9.9}\times$ (Cython и C расходятся на полпроцента)
+      & распрямление на чистом Python дало $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-314:bfs/cpython_flat}{0.89}\times$ \\
+    объектный код на Python
+      & обновиться до 3.11+
+      & $2.0$--$\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314:attr_set/v314}{3.0}\times$ на атрибутах и методах
+      & большую часть дала 3.11, 3.12 медленнее 3.11 на 14 из 16 операций, dict-литерал на 3.14
+        идёт со скоростью $\meas{ratio:b3_runtime-v310:create_dict/v310|b3_runtime-v314:create_dict/v314}{0.74}\times$ от 3.10 \\
+    CPU-нагрузка на Python по потокам
+      & free-threaded сборка
+      & $5.6$--$\meas{ratio:b4_threads-ft:py_branchy/ft/T1_control|b4_threads-ft:py_branchy/ft/T8}{6.1}\times$ на 8 потоках
+      & $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ однопоточной цены, которую берёт сборка, а не блокировка \\
+    параллельная работа, уже в C
+      & потоки на любой сборке
+      & $5.8$--$\meas{ratio:b4_threads-gil:c_ffi_uniform/gil/T1|b4_threads-gil:c_ffi_uniform/gil/T8}{7.2}\times$ на 8 потоках, сбалансированное ядро
+      & GIL здесь ни при чём; несбалансированное даёт $1.8$--$\meas{ratio:b4_threads-gil:c_ffi_mandelbrot/gil/T1_control|b4_threads-gil:c_ffi_mandelbrot/gil/T8}{3.1}\times$ \\
+    настройка сборки интерпретатора
+      & PGO вместе с full LTO, а не PGO отдельно
+      & $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull}{1.10}\times$ ($\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull_native}{1.12}\times$ с \code{-march=native})
+      & один PGO даёт $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo}{1.02}\times$, запись атрибута проигрывает во всех шести, $0.88$--$\meas{ratio:b5_buildcfg-plain:attr_set/plain|b5_buildcfg-pgo:attr_set/pgo}{0.98}\times$ \\
+    собственный tier-2 JIT CPython
+      & измерить его: он помогает большему числу операций, чем портит
+      & $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-jit}{1.04}\times$ в целом
+      & 6 операций из 16 медленнее (целочисленная арифметика и запись атрибута $0.88$--$\meas{ratio:b5_buildcfg-plain:int_arith/plain|b5_buildcfg-jit:int_arith/jit}{0.89}\times$),
+        по-прежнему помечен экспериментальным \\
+    чистый Python, который должен остаться чистым
+      & PyPy
+      & $3.2$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-pypy311:matmul/cpython_loop}{42.8}\times$
+      & вызов \code{ctypes}, передающий буфер в $2$\,МБ, стоит там в $\meas{ratio:b2_branchy-pypy311:tokenize/c_ctypes|b2_branchy-314:tokenize/c_ctypes}{5.3}$~раза дороже, чем в
+        CPython, Numba нет, поддержка экосистемы слабеет \\
+    редукция, ограниченная своей цепочкой зависимости
+      & перегруппировать накопление в исходнике
+      & $\meas{ratio:b1_flags-314:arraysum/accum_acc1|b1_flags-314:arraysum/accum_acc4}{2.74}\times$ при неизменных флагах, выше $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$ у \code{-ffast-math}
+      & другой порядок суммирования --- независимо от того, флаг это разрешил или исходник
+        (\S\ref{sec:rq1b}) \\
+    типизированный горячий код, готовы переписать
+      & CinderX Static Python + JIT
+      & $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ поверх JIT
+      & инициализация описана только в туториале, без JIT в $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}$~раза медленнее и в $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_python}{5.8}$~раза
+        медленнее даже со специализирующим путём интерпретатора \\
+    запуск, в котором доминируют импорты
+      & ленивые импорты Cinder
+      & $\meas{med:b6_cinderx-fork:import_200_modules_eager/fork:ms}{19.7}$\,мс $\to$ менее $1\,\mu$с
+      & только форк, ошибки импорта уезжают на первое обращение, первое обращение стоит
+        $\meas{med:b6_cinderx-fork:import_200_modules_first_touch/fork:ms}{0.35}$\,мс \\
+    смешанный конвейер
+      & атаковать крупнейшую стадию и на этом остановиться
+      & $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$ с одной стадии
+      & Numba на стадии в \meas{share:b7_pipeline-gil:stage_aggregate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{3.6}\% дала $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v1_numba}{1.01}\times$, добавление потоков дало $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v3_native_threads}{0.72}\times$ (GIL) и
+        $\meas{ratio:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-ft:end_to_end/ft/v3_native_threads}{1.28}\times$ (free-threaded) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Четыре вопроса к любой цифре о производительности.} Работа над восемью
+исследовательскими вопросами этой статьи дала короткий чек-лист. Каков был размер входа --- точка
+окупаемости смещается у нас на три
+порядка (\S\ref{sec:rq1c})? Была ли базовой линией та же программа --- поставляемый BLAS против
+наивного тройного цикла сравнением языков не является (\S\ref{sec:rq1})? Менялась ли одна
+переменная или две --- опции сборки интерпретатора стоят нескольких выпусков работы над
+интерпретатором, поэтому серия прогонов по версиям на по-разному собранных бинарниках не измеряет ни того,
+ни другого (\S\ref{sec:rq3}, \S\ref{sec:rq6})? И чего это стоило --- на коде, который приём не
+ускоряет, на границе, которую он вводит, в семантике, которую он ослабляет (\S\ref{sec:rq5},
+\S\ref{sec:rq2}, \S\ref{sec:rq1b})? Цифра, выдержавшая эти четыре вопроса, годится для действия.

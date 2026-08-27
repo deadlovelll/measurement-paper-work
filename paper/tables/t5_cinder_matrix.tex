@@ -1,0 +1,17 @@
+\begin{tabular}{p{0.30\linewidth}p{0.10\linewidth}p{0.52\linewidth}}
+\toprule
+capability & verdict & measurement \\
+\midrule
+builds on Linux x86\_64 & yes & 0 errors in both configurations, with the patches carried in the vendored tree \\
+JIT compiles \& is correct & yes & all 8 kernel functions, compiled at the JIT's own threshold and verified to be what runs \\
+CinderX runtime, no JIT & cost & matmul 1.13$\times$ the stock time, 1.01--1.33$\times$ over the six \\
+CinderX JIT on untyped code & win & matmul 0.61$\times$ the stock time, 0.33--0.79$\times$ over the six \\
+same, adaptive configuration & win & matmul 1.11$\times$ / 0.61$\times$ the stock time \\
+Static Python + JIT & win & 11.4$\times$ faster than the same kernel boxed under the same JIT (7.5$\times$ on the slow layout mode) \\
+Static Python, interpreter & cost & 10.2$\times$ slower than boxed Python \\
+adaptive specialisation, once completed & win & static interpreter 716 $\to$ 411\,ms; no effect under the JIT \\
+lazy imports & win & 19.7\,ms $\to$ 0.63\,$\mu$s; 0/200 module bodies run; first use 0.35\,ms \\
+parallel GC & composition-dependent & 0.68$\times$ serial with the state visible, 1.06$\times$ after immortalising it (187 $\to$ 129\,ms serial) \\
+lightweight frames & no effect here & 200-deep call chain 1.01$\times$ stock \\
+\bottomrule
+\end{tabular}

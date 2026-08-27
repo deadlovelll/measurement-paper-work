@@ -1,0 +1,144 @@
+\section{Discussion: a decision table instead of a ranking}
+\label{sec:discussion}
+
+Advice in this area is usually organised by technology --- ``use Numba for this, use C for
+that''. The measurements put the workload first and the technology second, for three reasons
+that recur across all eight questions. The index that works is what the workload does, with the
+technology and its price in the cells.
+
+\paragraph{1. On compute-bound work the technologies are interchangeable; where allocation
+dominates they are not.} On compute-bound scalar loops, Cython, Numba, C behind two different FFIs, and Rust
+agree to within $\meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/numba}{0.2}\%$ on the reduction, and where they do not agree they differ by $\meas{pct:b1_compute-314:mandelbrot/rust_ctypes|b1_compute-314:mandelbrot/cython}{18}\%$ on
+one kernel and $\meas{ratio:b1_compute-314:matmul/c_ctypes|b1_compute-314:matmul/numba}{1.8}\times$ on another, in both directions with no consistent winner --- against
+the $32$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba}{128}\times$ that compiling at all is worth (\S\ref{sec:rq1}). The measurements
+therefore do not decide among them; what would --- build complexity, debuggability, code
+ownership --- lies outside what this study measures. What \emph{does} distinguish outcomes is which class
+the workload belongs to: the same four technologies span $52$--$61\times$ on the compute-bound
+kernels and $7.3$--$13.6\times$ on the branchy and allocating ones (\S\ref{sec:rq2}) --- and
+inside that second class they stop being interchangeable too, separating by $3.7$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}\times$
+exactly where small objects are allocated.
+
+\paragraph{2. The decisions that dominate are about what the program may do, not about which
+tool does it.} Choosing
+to write the hot loop in a language that can be compiled at all is worth more than any choice
+made within that language --- except where the object model is the bound, and there the two are
+the same size: compiling the binary trees at all buys Cython $\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/cython}{4.9}\times$, and choosing an
+implementation that owns its own memory buys $3.5$--$\meas{ratio:b2_branchy-314:binarytrees/numba|b2_branchy-314:binarytrees/rust_ctypes}{5.3}\times$ on top of it
+(\S\ref{sec:rq2}) --- and flattening
+the data structure without compiling the loop made our graph traversal $\meas{pct:b2_branchy-314:bfs/cpython_flat|b2_branchy-314:bfs/cpython_loop}{12}\%$ \emph{slower}.
+Deferring module execution is worth four orders of magnitude of import
+latency (\S\ref{sec:rq4}) and changes when import errors surface. Allowing floating-point
+reassociation is worth $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$ on a reduction, and it changes results --- and it needs no
+compiler flag at all, since regrouping the accumulation in the source is worth $\meas{ratio:b1_flags-314:arraysum/accum_acc1|b1_flags-314:arraysum/accum_acc4}{2.74}\times$ at
+unchanged flags (\S\ref{sec:rq1b}). Each is a decision about
+what the program is allowed to do, and each dominates the tool choice made under it. The flags
+below those decisions are not a substitute for them: moving from \code{-O2} to \code{-O3} was
+worth nothing measurable on two of our three kernels and $\meas{pct:b1_flags-314:matmul/O2|b1_flags-314:matmul/O3}{0.1}\%$ on the third, while
+\code{-march=native}, the one flag that did change the emitted code everywhere, made one kernel
+$\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/O3native}{1.25}\times$ faster and another $\meas{ratio:b1_flags-314:matmul/O3native|b1_flags-314:matmul/O2}{1.80}\times$ \emph{slower} (\S\ref{sec:rq1b}).
+
+\paragraph{3. Every gain has a cost, and the cost is the part that is usually not reported.}
+JIT compilation costs $\meas{fact:b1_breakeven-314:facts.numba_compile_s:ms}{215}$\,ms of latency in the one case we measured, which is 7 calls or 7335
+calls of work depending on input size (\S\ref{sec:rq1c}). Free-threading costs $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ of
+single-thread throughput (\S\ref{sec:rq5}). Static Python costs a rewrite in primitive types
+and is $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}\times$ \emph{slower} if the JIT is not also enabled (\S\ref{sec:rq4}). An FFI costs
+$59$--$\meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}$\,ns per crossing, against $\meas{med:b1_compute-314:call_overhead/python_function:ns}{31}$\,ns for a pure-Python call: free for a $10\,\mu$s
+kernel, a real cost per record (\S\ref{sec:rq2}).
+
+\medskip
+Table~\ref{tab:decision} is the result: the workload classes of \S\ref{sec:intro} with a
+measured effect and a price in every row. It is the form we would put in front of an engineer.
+
+\begin{table}[t]
+  \centering
+  \caption{Decision table from the measurements. Every factor is from the single measurement
+    host of Table~\ref{tab:platform}; ``cost'' lists what the change also brings.}
+  \label{tab:decision}
+  \small
+  \begin{tabular}{p{0.22\linewidth}p{0.25\linewidth}p{0.17\linewidth}p{0.26\linewidth}}
+    \toprule
+    workload & action that paid off & measured & cost / caveat \\
+    \midrule
+    numeric loop over an array
+      & any compiled path (Cython / Numba / C / Rust)
+      & $32\times$
+      & a build step; the four routes are within $\meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/numba}{0.2}\%$ of each other here \\
+    \dots{} and reassociation is acceptable
+      & \code{fastmath} / \code{-ffast-math}
+      & $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$ on top
+      & results change ($4.6\cdot10^{-5}$ here) \\
+    array operation a library already has
+      & NumPy / vendor BLAS
+      & up to $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numpy}{1495.9}\times$
+      & only where the operation exists; $\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/numpy}{4.7}\times$ when it does not fit \\
+    branch-heavy scan over flat data
+      & Cython or Numba
+      & $12\times$
+      & C and Rust are only $8$--$\meas{pct:b2_branchy-314:tokenize/numba|b2_branchy-314:tokenize/c_ctypes}{17}\%$ further ahead \\
+    allocation-heavy object graph
+      & an allocator that is not CPython's: C or Rust behind an FFI, or Codon
+      & $17.2$--$\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/rust_ctypes}{20.8}\times$ vs $3.9$--$\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-314:binarytrees/cython}{4.9}\times$
+      & memory-ownership rewrite, or a recompile if Codon takes the source \\
+    irregular graph traversal
+      & compile it; a flat layout alone is not the win
+      & $9.9\times$ (Cython and C within half a per cent)
+      & flattening it in pure Python was worth $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-314:bfs/cpython_flat}{0.89}\times$ \\
+    object/attribute-heavy Python
+      & upgrade to 3.11+
+      & $2.0$--$\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314:attr_set/v314}{3.0}\times$ on attribute and method operations
+      & 3.11 delivered most of it; 3.12 is slower than 3.11 on 14 of 16 operations; a dict
+        literal on 3.14 runs at $\meas{ratio:b3_runtime-v310:create_dict/v310|b3_runtime-v314:create_dict/v314}{0.74}\times$ its 3.10 rate \\
+    thread-parallel CPU-bound Python
+      & free-threaded build
+      & $5.6$--$\meas{ratio:b4_threads-ft:py_branchy/ft/T1_control|b4_threads-ft:py_branchy/ft/T8}{6.1}\times$ on 8 threads
+      & $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ single-thread tax, paid by the build not the lock \\
+    thread-parallel work already in C
+      & threads on any build
+      & $5.8$--$\meas{ratio:b4_threads-gil:c_ffi_uniform/gil/T1|b4_threads-gil:c_ffi_uniform/gil/T8}{7.2}\times$ on 8 threads, balanced kernel
+      & the GIL is irrelevant here; the imbalanced kernel reaches $1.8$--$\meas{ratio:b4_threads-gil:c_ffi_mandelbrot/gil/T1_control|b4_threads-gil:c_ffi_mandelbrot/gil/T8}{3.1}\times$ \\
+    interpreter build tuning
+      & PGO with full LTO, not PGO alone
+      & $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull}{1.10}\times$ ($\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull_native}{1.12}\times$ adding \code{-march=native})
+      & PGO alone is $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo}{1.02}\times$; attribute writes lose in all six, $0.88$--$\meas{ratio:b5_buildcfg-plain:attr_set/plain|b5_buildcfg-pgo:attr_set/pgo}{0.98}\times$ \\
+    CPython's own tier-2 JIT
+      & measure it: it helps more operations than it hurts
+      & $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-jit}{1.04}\times$ overall
+      & 6 of 16 operations slower (integer arithmetic and attribute writes $0.88$--$\meas{ratio:b5_buildcfg-plain:int_arith/plain|b5_buildcfg-jit:int_arith/jit}{0.89}\times$);
+        still labelled experimental \\
+    pure Python that must stay pure Python
+      & PyPy
+      & $3.2$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-pypy311:matmul/cpython_loop}{42.8}\times$
+      & a \code{ctypes} call passing a $2$\,MB buffer costs $\meas{ratio:b2_branchy-pypy311:tokenize/c_ctypes|b2_branchy-314:tokenize/c_ctypes}{5.3}\times$ more than CPython's;
+        no Numba; ecosystem support is thinning \\
+    a reduction bound by its dependency chain
+      & regroup the accumulation in the source
+      & $\meas{ratio:b1_flags-314:arraysum/accum_acc1|b1_flags-314:arraysum/accum_acc4}{2.74}\times$ at unchanged flags, above \code{-ffast-math}'s $\meas{ratio:b1_flags-314:arraysum/O3native|b1_flags-314:arraysum/O3native_ffast}{2.42}\times$
+      & a different summation order, whether a flag or the source grants it
+        (\S\ref{sec:rq1b}) \\
+    typed hot code, willing to rewrite
+      & CinderX Static Python + JIT
+      & $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ on top of the JIT
+      & boot sequence documented only in a tutorial; $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}\times$ slower without the JIT, $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_python}{5.8}\times$ slower
+        even with the specialising interpreter path \\
+    startup dominated by imports
+      & Cinder lazy imports
+      & $\meas{med:b6_cinderx-fork:import_200_modules_eager/fork:ms}{19.7}$\,ms $\to$ under $1\,\mu$s
+      & fork-only; defers import errors to first use; first touch costs $\meas{med:b6_cinderx-fork:import_200_modules_first_touch/fork:ms}{0.35}$\,ms \\
+    mixed pipeline
+      & attack the largest stage, and stop there
+      & $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$ from one stage
+      & Numba on a \meas{share:b7_pipeline-gil:stage_aggregate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{3.6}\% stage gave $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v1_numba}{1.01}\times$; adding threads gave $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v3_native_threads}{0.72}\times$ (GIL) and
+        $\meas{ratio:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-ft:end_to_end/ft/v3_native_threads}{1.28}\times$ (free-threaded) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Four questions to ask of a performance figure.} Working through the eight research
+questions of this paper produced a short checklist. What was the input size --- a break-even point moves by three
+orders of magnitude across ours (\S\ref{sec:rq1c})? Was the baseline the same program --- a
+vendor BLAS against a naive triple loop is not a language comparison (\S\ref{sec:rq1})? Was one
+variable changed, or two --- an interpreter's build options are worth several releases of
+interpreter work, so a version sweep on differently-built binaries measures neither
+(\S\ref{sec:rq3}, \S\ref{sec:rq6})? And what did it cost --- on the code it does not
+accelerate, at the boundary it introduces, in the semantics it relaxes (\S\ref{sec:rq5},
+\S\ref{sec:rq2}, \S\ref{sec:rq1b})? A figure that survives those four is worth acting on.
