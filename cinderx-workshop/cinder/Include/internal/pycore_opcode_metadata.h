@@ -1766,9 +1766,9 @@ const char *_PyOpcode_OpName[267] = {
 };
 #endif
 
-extern const uint8_t _PyOpcode_Caches[256];
+extern uint8_t _PyOpcode_Caches[256];
 #ifdef NEED_OPCODE_METADATA
-const uint8_t _PyOpcode_Caches[256] = {
+uint8_t _PyOpcode_Caches[256] = {
     [TO_BOOL] = 3,
     [STORE_SUBSCR] = 1,
     [SEND] = 1,
@@ -1791,9 +1791,9 @@ const uint8_t _PyOpcode_Caches[256] = {
 };
 #endif
 
-extern const uint8_t _PyOpcode_Deopt[256];
+extern uint8_t _PyOpcode_Deopt[256];
 #ifdef NEED_OPCODE_METADATA
-const uint8_t _PyOpcode_Deopt[256] = {
+uint8_t _PyOpcode_Deopt[256] = {
     [122] = 122,
     [123] = 123,
     [124] = 124,
