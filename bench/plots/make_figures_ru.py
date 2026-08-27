@@ -246,12 +246,12 @@ RU_RE = [
      r"ускорение относительно \1 (шкала log2, 1.00 — так же)"),
     (r"^CPython ([\d.]+t?) → ([\d.]+t?): per-operation speedup\n"
      r"\(x-factors vs ([\d.]+t?); interpreters compiled here, one compiler, one configure line\)$",
-     r"CPython \1 → \2: ускорение по операциям\n(во сколько раз относительно \3; "
+     r"CPython \1 → \2: ускорение по операциям\n(во сколько раз относительно \3 — "
      r"интерпретаторы собраны здесь, один компилятор, одна строка configure)"),
     (r"^CPython ([\d.]+t?) → ([\d.]+t?): per-operation speedup\n"
      r"\(x-factors vs ([\d.]+t?); interpreters (.*)\)$",
      r"CPython \1 → \2: ускорение по операциям\n"
-     r"(во сколько раз относительно \3; интерпретаторы: \4)"),
+     r"(во сколько раз относительно \3 — интерпретаторы: \4)"),
     (r"^Compute-bound kernels on CPython ([\d.]+) \((.*), (\d+) cores\)$",
      r"Вычислительные ядра на CPython \1 (\2, \3 ядер)"),
     (r"^Compute-bound kernels on CPython ([\d.]+) \((.*)\)$",
