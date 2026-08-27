@@ -62,11 +62,13 @@ $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba}
 мандельброт, на \meas{pct:b1_compute-314:mandelbrot/c_ctypes|b1_compute-314:mandelbrot/c_pybind11}{3.3}\,\% ($t=48.3$): один исходник, одни флаги, два пути компоновки и
 полезное напоминание о том, насколько крупным может измериться «одна и та же программа дважды».
 
-Четыре наблюдения интереснее самой заголовочной цифры.
+Интереснее самой заголовочной цифры вот что.
 
 Во-первых, \textbf{плато задаёт не язык}. Numba с \code{fastmath} достигает $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba_fastmath}{76.9}\times$ на
 суммировании --- в $\meas{ratio:b1_compute-314:arraysum/numba|b1_compute-314:arraysum/numba_fastmath}{2.41}$~раза дальше компилированного плато, --- и тот же исходник на C, собранный
-с \code{-ffast-math}, даёт \meas{med:b1_flags-314:arraysum/O3native_ffast:ms}{0.418}\,мс, то есть $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_flags-314:arraysum/O3native_ffast}{77.1}\times$ (\S\ref{sec:rq1b}). Ничего в языке не
+с \code{-ffast-math}, даёт \meas{med:b1_flags-314:arraysum/O3native_ffast:ms}{0.418}\,мс, то есть $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_flags-314:arraysum/O3native_ffast}{77.1}\times$ (\S\ref{sec:rq1b}). Базовая линия на чистом Python
+берётся при этом из набора настоящего раздела, поскольку в наборе флагов её нет: это единственное
+в работе отношение, снятое между двумя разными наборами. Ничего в языке не
 изменилось, изменилось разрешение переассоциировать сложения с плавающей точкой, что разрывает
 последовательную цепочку зависимостей по накопителю. \S\ref{sec:rq1b} показывает, что множитель
 принадлежит этой цепочке, а не какому-либо компилятору, --- воспроизводя его при неизменных флагах.
@@ -77,7 +79,7 @@ $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba}
 тройного цикла, который добросовестно воспроизводят все остальные реализации. И наоборот, на
 мандельброте NumPy --- \emph{самый медленный} из ускоренных вариантов ($\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/numpy}{4.7}\times$), потому что
 цикл escape-time с досрочным выходом по каждому пикселю приходится выражать проходами по всей
-сетке с маской. Таким образом одна и та же технология даёт $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numpy}{1495.9}\times$ на одном ядре и
+сетке с маской. Поэтому одна и та же технология даёт $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numpy}{1495.9}\times$ на одном ядре и
 $\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/numpy}{4.7}\times$ на другом, одно утверждение «NumPy быстрый» не несёт информации.
 
 NumPy --- к тому же единственная реализация в этом сравнении, которая не однопоточна: её
@@ -279,7 +281,7 @@ $\meas{ratio:b1_flags-314:arraysum/accum_acc8|b1_flags-314:arraysum/accum_acc4}{
 про \code{-O2} против \code{-O3}.
 
 \paragraph{Вывод.} Три вещи, в порядке того, насколько они меняют решение. Во-первых, уровень
-оптимизации, доминирующий в советах по сборке, для ядер такой формы переменной не является:
+оптимизации, который в строке сборки меняют первым, для ядер такой формы переменной не является:
 \code{-O2} и \code{-O3} --- одна и та же программа на двух из трёх, а там, где не одна и та же, они
 и не разное время, --- так что исследование, сообщающее разницу во времени между ними, сообщает
 собственный шум. Во-вторых, архитектурный флаг на этой цели --- настоящая переменная, и он не
@@ -604,8 +606,8 @@ $\meas{geomean:b3_runtime-v310|b3_runtime-v314}{1.45}\times$ на 3.14:
   \item \textbf{Free-threaded сборка --- это другой профиль, а не равномерно более медленный.} Её
         геометрическое среднее --- $\meas{geomean:b3_runtime-v310|b3_runtime-v314t}{1.33}\times$, но это лучшая измеренная конфигурация для создания
         экземпляров (обычные объекты $\meas{ratio:b3_runtime-v310:create_plain_obj/v310|b3_runtime-v314t:create_plain_obj/v314t}{2.24}\times$, со слотами $\meas{ratio:b3_runtime-v310:create_slots_obj/v310|b3_runtime-v314t:create_slots_obj/v314t}{1.88}\times$), и она совпадает с 3.11
-        на сборке мусора ($\meas{ratio:b3_runtime-v310:gc_collect_100k_cycles/v310|b3_runtime-v314t:gc_collect_100k_cycles/v314t}{1.93}\times$), тогда как запись атрибута сваливается до $\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314t:attr_set/v314t}{1.01}\times$ ---
-        цифры 3.10, --- а \code{list.append} ($\meas{ratio:b3_runtime-v310:list_append/v310|b3_runtime-v314t:list_append/v314t}{0.85}\times$), проход исключения ($\meas{ratio:b3_runtime-v310:exception_roundtrip/v310|b3_runtime-v314t:exception_roundtrip/v314t}{0.78}\times$) и
+        на сборке мусора ($\meas{ratio:b3_runtime-v310:gc_collect_100k_cycles/v310|b3_runtime-v314t:gc_collect_100k_cycles/v314t}{1.93}\times$), тогда как запись атрибута сваливается до $\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314t:attr_set/v314t}{1.01}\times$, то есть
+        до цифры 3.10, а \code{list.append} ($\meas{ratio:b3_runtime-v310:list_append/v310|b3_runtime-v314t:list_append/v314t}{0.85}\times$), проход исключения ($\meas{ratio:b3_runtime-v310:exception_roundtrip/v310|b3_runtime-v314t:exception_roundtrip/v314t}{0.78}\times$) и
         форматирование строк ($\meas{ratio:b3_runtime-v310:str_format_join/v310|b3_runtime-v314t:str_format_join/v314t}{0.91}\times$) заканчивают ниже 3.10.
 \end{itemize}
 
@@ -625,8 +627,8 @@ $\meas{geomean:b3_runtime-v310|b3_runtime-v314}{1.45}\times$ на 3.14:
 на 3.13 даже \emph{обращается}: там объекты со слотами на \meas{pct:b3_runtime-v313:create_slots_obj/v313|b3_runtime-v313:create_plain_obj/v313}{8}\% медленнее объектов со словарём (6.48
 против \meas{med:b3_runtime-v313:create_plain_obj/v313:ms}{5.98}\,мс на 20\,000), после чего на 3.14 возвращается преимущество в \meas{pct:b3_runtime-v314:create_plain_obj/v314|b3_runtime-v314:create_slots_obj/v314}{18}\%, --- при том что
 структурная проба говорит, что аллокатору обе формы по-прежнему стоят одинаково. Значит, механизм,
-которым это правило обычно обосновывают --- на одну аллокацию меньше на экземпляр, --- перестал
-действовать на 3.13, а разница во времени создания никуда не делась: на 3.14
+которым это правило обосновывают --- на одну аллокацию меньше на экземпляр, --- перестал
+действовать на 3.13. Разница во времени создания при этом никуда не делась: на 3.14
 \code{\_\_slots\_\_} по-прежнему стоят \meas{pct:b3_runtime-v314:create_plain_obj/v314|b3_runtime-v314:create_slots_obj/v314}{18}\%, но по причине, которую эти измерения не устанавливают.
 Предпоследняя строка таблицы~\ref{tab:facts} --- та, которая не приносит, а стоит:
 пиковый RSS после того же набора растёт с 27\,МБ на 3.10 до 30\,МБ на 3.14 и до 36\,МБ на
@@ -651,9 +653,9 @@ $1.15$~раза быстрее, чем на 3.10, будучи разогрет�
 
 \paragraph{Вывод.} Обновление интерпретатора для объектного кода действительно окупается:
 операции с атрибутами и методами на 3.14 быстрее, чем на 3.10, в $1.97$--$\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314:attr_set/v314}{2.97}$~раза, а
-геометрическое среднее по всему набору --- $\meas{geomean:b3_runtime-v310|b3_runtime-v314}{1.45}\times$. К этому идут три уточнения. Выигрыш
-распределён по выпускам неравномерно --- большую его часть даёт 3.11, 3.12 и 3.13 часть отдают
-назад, а 3.14 возвращает её и добавляет ещё, --- так что «обновляйтесь» --- хороший совет, а
+геометрическое среднее по всему набору --- $\meas{geomean:b3_runtime-v310|b3_runtime-v314}{1.45}\times$. К этому идут уточнения. Выигрыш
+распределён по выпускам неравномерно: большую его часть даёт 3.11, 3.12 и 3.13 часть отдают
+назад, а 3.14 возвращает её и добавляет ещё. Поэтому «обновляйтесь» --- хороший совет, а
 «каждый выпуск помогает» --- нет. Из обычно называемых механизмов наши измерения относят выигрыш к
 специализирующему интерпретатору и к аллокатору, бессмертные объекты доказуемо присутствуют с 3.12
 и доказуемо невидимы для однопоточного кода. Там, где они должны окупаться --- в конкуренции за
@@ -721,9 +723,9 @@ PEP~523~\cite{pep523}, --- выключенное состояние здесь 
 \paragraph{Результат: сам форк --- не главное.}
 Собранный теми же флагами, форк Cinder укладывается в \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% от обычного CPython 3.14.6 на всех
 шести ядрах ($0.98$--$\meas{ratio:b6_cinderx-fork:mandelbrot/fork|b6_cinderx-stock:mandelbrot/stock}{1.01}\times$ его времени, рисунок~\ref{fig:cinder} сверху). Пять из этих
-шести различий критерий значимости разрешает, а одно --- двоичные деревья, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ при
-$t=0.15$ --- нет, поэтому честная формулировка не «то же
-самое», а «измеримо различно и без пользы»: крупнейшее из них --- сумма массива на
+шести различий критерий значимости разрешает; шестое (двоичные деревья, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ при
+$t=0.15$) --- нет. Честная формулировка поэтому не «то же
+самое», а «измеримо различно и без пользы»: крупнейшее из различий --- сумма массива на
 $\meas{ratio:b6_cinderx-fork:arraysum/fork|b6_cinderx-stock:arraysum/stock}{0.979}\times$ ($t=5.2$), то есть форк там на \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% быстрее, следом произведение матриц с
 $\meas{ratio:b6_cinderx-fork:matmul/fork|b6_cinderx-stock:matmul/stock}{0.982}\times$, и ни в одну сторону ничего не сдвигается больше чем на \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\%. Глубокие функции его рантайма включаются по требованию, и здесь
 окупается одна --- ленивые импорты: с ними импорт пакета из 200 модулей исполняет 0 тел модулей
@@ -830,8 +832,8 @@ $\meas{ratio:b6_cinderx-jitopt_default:binarytrees/jitopt_default|b6_cinderx-jit
 Интерпретатор 3.14 нёс двенадцать мест, где статический опкод специализируется --- семь
 \code{\_Ci\_specialize} и пять \code{specialize\_with\_value}, --- и ни одного обработчика для
 опкодов, в которые они специализируются, интерпретатор 3.12 в том же дереве имеет восемь таких
-обработчиков, то есть механизм существовал, а перенесли его в одну сторону. Отсюда три следствия,
-каждое смертельное само по себе. \code{\_Ci\_specialize} записывал кэшированный опкод поверх
+обработчиков, то есть механизм существовал, а перенесли его в одну сторону. Следствия отсюда, каждое
+смертельное само по себе. \code{\_Ci\_specialize} записывал кэшированный опкод поверх
 префикса \code{EXTENDED\_OPCODE}, а не поверх самого статического опкода, --- и младший байт
 статического опкода является обычным опкодом CPython: \code{STORE\_LOCAL\_CACHED} равен 16, а
 опкод 16 в обычной таблице --- это \code{GET\_ITER}, так что следующее исполнение той же инструкции
@@ -884,9 +886,11 @@ $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_sta
 ASLR (\S\ref{sec:method}): замер с фиксированным размещением сообщил бы один из двух режимов как
 ответ, и о существовании второго никто бы не узнал.
 
-С чем тогда сравнивать эти \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,мс? «В $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{16.6}$~раза быстрее Python с объектами» --- обычно приводят
-именно это, и такое сравнение записывает на счёт типов то, что сделал компилятор, потому что вторая
-половина сравнения интерпретируется. То же ядро с объектами под тем же JIT занимает \meas{med:b6_static-fork_static:matmul96_int/fork_static/boxed_jit:ms}{48.4}\,мс, значит,
+С чем тогда сравнивать эти \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,мс (быстрая
+раскладка; отсчёт взят из адаптивного прогона, а компилируемую строку адаптивный флаг не
+двигает --- это показано следующим абзацем)? «В $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{16.6}$~раза быстрее Python с объектами» --- сравнение,
+напрашивающееся первым, и оно записывает на счёт типов то, что сделал компилятор, потому что
+вторая половина сравнения интерпретируется. То же ядро с объектами под тем же JIT занимает \meas{med:b6_static-fork_static:matmul96_int/fork_static/boxed_jit:ms}{48.4}\,мс, значит,
 сам JIT стоит здесь $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static:matmul96_int/fork_static/boxed_jit}{1.5}\times$, а \emph{типы поверх него --- $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$}, либо $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static:matmul96_int/fork_static/static_jit}{7.5}\times$ для
 процесса, которому досталось медленное размещение. Это и есть число, нужное тому, кто внедряет проект, --- и это
 диапазон, а не точка.
@@ -1112,8 +1116,8 @@ $\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_a
 $\meas{ratio:b4_threads-ft:py_arith/ft/T1_control|b4_threads-ft:py_arith/ft/T8}{5.60}\times$ на арифметике и $\meas{ratio:b4_threads-ft:py_branchy/ft/T1|b4_threads-ft:py_branchy/ft/T8}{6.05}\times$ на насыщенном ветвлениями коде при восьми потоках, тогда
 как обычная сборка даёт $\meas{ratio:b4_threads-gil:py_arith/gil/T1_control|b4_threads-gil:py_arith/gil/T8}{0.83}\times$ и $\meas{ratio:b4_threads-gil:py_branchy/gil/T1_control|b4_threads-gil:py_branchy/gil/T8}{0.88}\times$, --- то есть на обычной сборке добавление
 потоков к этой нагрузке делает её медленнее. Именно контроль \code{PYTHON\_GIL=1} на том же
-бинарнике позволяет отнести это к блокировке, а не к сборке. Рядом стоят три записи. Цена ---
-$1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ однопоточной пропускной способности на этих микротестах и \meas{pct:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{0.4}\,\% на смешанном
+бинарнике позволяет отнести это к блокировке, а не к сборке. Рядом стоят три записи. Первая --- цена:
+$1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ однопоточного замедления на этих микротестах и \meas{pct:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{0.4}\,\% на смешанном
 конвейере, и это цена сборки, а не блокировки --- тот же бинарник с включённой обратно блокировкой
 платит её тоже, --- поэтому она начисляется каждой части программы, включая те, которые ни одного
 потока не запускают, второй поток её возвращает. Вторая запись --- предусловие: если горячий цикл
@@ -1287,7 +1291,7 @@ $\meas{ratio:b5_buildcfg-plain:exception_roundtrip/plain|b5_buildcfg-jit:excepti
         закон Амдала. Стадия стоила \meas{share:b7_pipeline-gil:stage_aggregate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{3.6}\% прогона ещё до того, как к ней применили технику, и
         это число было известно заранее.
   \item \textbf{C на стадии классификации: $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$ по конвейеру в целом.} Стадия улучшается в
-        $\meas{ratio:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:stage_validate/gil/v2_native}{2.06}$~раза (54.1~$\to$~\meas{med:b7_pipeline-gil:stage_validate/gil/v2_native:ms}{26.3}\,мс) и составляет \meas{share:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{50}\% конвейера. Отметим, что сюда входят
+        $\meas{ratio:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:stage_validate/gil/v2_native}{2.06}$~раза (54.1~$\to$~\meas{med:b7_pipeline-gil:stage_validate/gil/v2_native:ms}{26.3}\,мс) и составляет \meas{share:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{50}\% конвейера. Сюда входят
         20\,000 пересечений \code{ctypes} по \meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}\,нс ($\approx 3.3$\,мс, \S\ref{sec:rq2}).
   \item \textbf{Четыре потока на сборке с GIL: $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v3_native_threads}{0.72}\times$ --- регрессия.} Оба потоковых варианта
         \emph{медленнее} последовательного (150.7 и \meas{med:b7_pipeline-gil:end_to_end/gil/v4_all:ms}{148.5}\,мс против \meas{med:b7_pipeline-gil:end_to_end/gil/v0_pure:ms}{108.9}\,мс). Цикл по записям

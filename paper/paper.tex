@@ -340,6 +340,13 @@ machine with no other workload --- which this study learned to check rather than
 at the cost recorded in \S\ref{sec:threats}. Absolute numbers are specific to this machine and to its fixed,
 turbo-disabled clock; what this paper reports are ratios.
 
+\paragraph{How to read the multipliers.} ``$N\times$'' means a \emph{speed-up} throughout: how
+many times faster the first thing named runs, so $N>1$ reads as a gain and $N<1$ as a loss. The
+one exception is flagged where it occurs, by the phrase ``at $N\times$ the time of'' such and
+such a configuration: there the number is a fraction of a time, and smaller means faster. What
+a technique costs is given as a slowdown (``$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ slower'') rather than as a
+fraction of throughput, so that the direction reads off the notation itself.
+
 \paragraph{What the protocol caught.}
 Three concrete errors were found by the protocol rather than by inspection, which is the
 argument for having one. (i)~An early pass took its samples consecutively per configuration
@@ -386,13 +393,6 @@ represent all Python workloads. They were
 chosen to instantiate the workload classes of \S\ref{sec:intro}, and the
 compute/branchy split is deliberately extreme so that the technologies' behaviour
 separates.
-
-\paragraph{Library versions, and which row is a library result.} Only \code{pyperf} is pinned by the artifact's
-environment setup; the Numba, Cython and NumPy versions are whatever that setup
-installed on the day it ran, the Rust toolchain is whatever \code{cargo} was already on the
-host's path, and no result record carries any of them. NumPy's \code{matmul}
-dispatches to a vendor BLAS; that row is a library data point, not a compiler data point,
-and is labelled accordingly.
 
 \paragraph{What the machine probe cannot see.} The machine probe of \S\ref{sec:method} is
 single-threaded, and this study found the limit the hard

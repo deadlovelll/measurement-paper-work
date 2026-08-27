@@ -15,6 +15,11 @@ export PATH
 
 SRC_CPY="$ROOT/cinderx-workshop/cpython"
 SRC_FORK="$ROOT/cinderx-workshop/cinder"
+if [ -d "$ROOT/cinderx-workshop/cinderx" ]; then
+  SRC_CX="$ROOT/cinderx-workshop/cinderx"
+else
+  SRC_CX="$SRC_CPY/cinderx"
+fi
 WORK="$OUT/src"
 LOGS="$OUT/logs"
 mkdir -p "$OUT" "$WORK" "$LOGS"
@@ -82,7 +87,7 @@ build_cinderx() {
   "$venv/bin/python" -m pip install -q --upgrade pip setuptools wheel > /dev/null 2>&1
 
   rm -rf "$cxsrc"
-  stage "$SRC_CPY/cinderx" "$cxsrc"
+  stage "$SRC_CX" "$cxsrc"
   rm -rf "$cxsrc/scratch" "$cxsrc"/*.egg-info
 
   (
