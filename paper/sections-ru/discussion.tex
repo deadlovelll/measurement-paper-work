@@ -96,7 +96,7 @@ Python: бесплатно для ядра на $10\,\mu$с и настояща�
     параллельная работа, уже в C
       & потоки на любой сборке
       & $5.8$--$\meas{ratio:b4_threads-gil:c_ffi_uniform/gil/T1|b4_threads-gil:c_ffi_uniform/gil/T8}{7.2}\times$ на 8 потоках, сбалансированное ядро
-      & GIL здесь ни при чём; несбалансированное даёт $1.8$--$\meas{ratio:b4_threads-gil:c_ffi_mandelbrot/gil/T1_control|b4_threads-gil:c_ffi_mandelbrot/gil/T8}{3.1}\times$ \\
+      & GIL здесь ни при чём: несбалансированное даёт $1.8$--$\meas{ratio:b4_threads-gil:c_ffi_mandelbrot/gil/T1_control|b4_threads-gil:c_ffi_mandelbrot/gil/T8}{3.1}\times$ \\
     настройка сборки интерпретатора
       & PGO вместе с full LTO, а не PGO отдельно
       & $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull}{1.10}\times$ ($\meas{geomean:b5_buildcfg-plain|b5_buildcfg-pgo_ltofull_native}{1.12}\times$ с \code{-march=native})

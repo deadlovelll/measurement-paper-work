@@ -58,7 +58,7 @@ $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba}
 держится слабее на сетке мандельброта ($52.8$--$\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/cython}{62.5}\times$) и
 распадается на произведении матриц ($49.0$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba}{128.4}\times$) по причине, которая принадлежит
 компилятору и разбирается ниже. На сумме массива критерий разводит и две границы к C --- на одну
-десятую процента; единственное же место, где они расходятся на заметную величину, ---
+десятую процента. Единственное же место, где они расходятся на заметную величину, ---
 мандельброт, на \meas{pct:b1_compute-314:mandelbrot/c_ctypes|b1_compute-314:mandelbrot/c_pybind11}{3.3}\,\% ($t=48.3$): один исходник, одни флаги, два пути компоновки и
 полезное напоминание о том, насколько крупным может измериться «одна и та же программа дважды».
 
@@ -107,7 +107,7 @@ $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/codon_pyex
 тремя строками: индексируется массив или взятый из него один раз указатель. Заявить в
 сигнатуре непрерывность массива, как это делает \code{double[::1]} в Cython, Codon не умеет,
 поэтому индексация \code{ndarray} идёт через шаги, известные лишь во время исполнения, и каждый
-доступ к элементу тащит за собой это умножение со смещением; форма с указателем его убирает. Идиоматичная строка из-за этого проигрывает Cython
+доступ к элементу тащит за собой это умножение со смещением, а форма с указателем его убирает. Идиоматичная строка из-за этого проигрывает Cython
 ($\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/cython}{72.3}\times$), а строка с указателем обгоняет и его, и все нативные строки таблицы. Этот
 разброс шире, чем разница между любыми двумя \emph{языками} здесь, --- и в том всё дело: на
 данном ядре решал не выбор между Python и Rust, а одна строка внутри одной функции. Обе строки
@@ -297,9 +297,9 @@ $\meas{ratio:b1_flags-314:arraysum/accum_acc8|b1_flags-314:arraysum/accum_acc4}{
 (суммирование \code{-O2} против Numba $\meas{ratio:b1_flags-314:arraysum/numba_plain|b1_flags-314:arraysum/O2}{0.9981}\times$, $t=4.13$, \code{-ffast-math} против Numba
 fastmath $\meas{ratio:b1_flags-314:arraysum/numba_fastmath|b1_flags-314:arraysum/O3native_ffast}{0.9978}\times$, $t=4.59$, произведение матриц \code{-O2} против Numba $\meas{ratio:b1_flags-314:matmul/numba_plain|b1_flags-314:matmul/O2}{1.0091}\times$,
 $t=-12.59$ --- все значимы при таком разрешении). На мандельброте Numba опережает \code{-O2} в
-$\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/numba_plain}{1.12}$~раза, а \code{-O3 -march=native -ffast-math} --- в $\meas{ratio:b1_flags-314:mandelbrot/O3native_ffast|b1_flags-314:mandelbrot/numba_fastmath}{1.10}$~раза с fast-math; но сборке
+$\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/numba_plain}{1.12}$~раза, а \code{-O3 -march=native -ffast-math} --- в $\meas{ratio:b1_flags-314:mandelbrot/O3native_ffast|b1_flags-314:mandelbrot/numba_fastmath}{1.10}$~раза с fast-math. Но сборке
 \code{-O3 -march=native}, собранной под тот же процессор, она уступает в $\meas{ratio:b1_flags-314:mandelbrot/numba_plain|b1_flags-314:mandelbrot/O3native}{1.11}$~раза, Numba по умолчанию
-компилирует под хостовый процессор, поэтому сравнение с \code{-O2} не равное с равным;
+компилирует под хостовый процессор, поэтому сравнение с \code{-O2} не равное с равным.
 остаток же против сборки под ту же цель --- это различие кодогенерации между двумя
 фронтендами, а не свойство компиляции на лету. Одно ограничение идёт со всем этим
 вместе: \code{-ffast-math} изменил число итераций мандельброта на $4.6\cdot10^{-5}$ относительно ---
@@ -701,7 +701,7 @@ PEP~523~\cite{pep523}, --- выключенное состояние здесь 
   \caption{В4: (сверху) форк, рантайм CinderX и JIT CinderX на неизменённом Python-коде
     относительно обычного CPython 3.14.6, собранного теми же флагами, (снизу слева) влияние
     флага адаптивного Static Python на те же отношения, (снизу в центре) целочисленный matmul на
-    Static Python \code{int64} (построено для медленной раскладки, \meas{med:b6_static-fork_static:matmul96_int/fork_static/static_jit:ms}{6.43}\,мс; быстрая ---
+    Static Python \code{int64} (построено для медленной раскладки, \meas{med:b6_static-fork_static:matmul96_int/fork_static/static_jit:ms}{6.43}\,мс, для быстрой ---
     \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,мс, \S\ref{sec:rq4}) --- против того же ядра с объектами и того же ядра с объектами
     под JIT, а также в интерпретаторе без адаптивной специализации и с ней, (снизу правее центра) задержка импорта пакета из 200 модулей с ленивыми импортами
     форка и без них, (снизу справа) одна сборка кучи воркера --- долгоживущее состояние плюс
@@ -723,7 +723,7 @@ PEP~523~\cite{pep523}, --- выключенное состояние здесь 
 \paragraph{Результат: сам форк --- не главное.}
 Собранный теми же флагами, форк Cinder укладывается в \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% от обычного CPython 3.14.6 на всех
 шести ядрах ($0.98$--$\meas{ratio:b6_cinderx-fork:mandelbrot/fork|b6_cinderx-stock:mandelbrot/stock}{1.01}\times$ его времени, рисунок~\ref{fig:cinder} сверху). Пять из этих
-шести различий критерий значимости разрешает; шестое (двоичные деревья, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ при
+шести различий критерий значимости разрешает. Шестое (двоичные деревья, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ при
 $t=0.15$) --- нет. Честная формулировка поэтому не «то же
 самое», а «измеримо различно и без пользы»: крупнейшее из различий --- сумма массива на
 $\meas{ratio:b6_cinderx-fork:arraysum/fork|b6_cinderx-stock:arraysum/stock}{0.979}\times$ ($t=5.2$), то есть форк там на \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% быстрее, следом произведение матриц с
@@ -734,7 +734,7 @@ $\meas{ratio:b6_cinderx-fork:matmul/fork|b6_cinderx-stock:matmul/stock}{0.982}\t
 записана как \code{unavailable} (\code{importlib.set\_lazy\_imports()} там не существует), а не как
 более медленное время. Машинерия облегчённых фреймов здесь, наоборот, не даёт ничего полезного:
 цепочка вызовов глубиной 200 --- $\meas{ratio:b6_cinderx-fork:call_depth_200/fork|b6_cinderx-stock:call_depth_200/stock}{1.01}\times$ обычной сборки, трассировка из 50 фреймов ---
-$\meas{ratio:b6_cinderx-fork:traceback_depth_50/fork|b6_cinderx-stock:traceback_depth_50/stock}{0.97}\times$, обход 100 фреймов --- $\meas{ratio:b6_cinderx-fork:frame_walk_depth_100/fork|b6_cinderx-stock:frame_walk_depth_100/stock}{1.01}\times$; все три расхождения тест разрешает, но
+$\meas{ratio:b6_cinderx-fork:traceback_depth_50/fork|b6_cinderx-stock:traceback_depth_50/stock}{0.97}\times$, обход 100 фреймов --- $\meas{ratio:b6_cinderx-fork:frame_walk_depth_100/fork|b6_cinderx-stock:frame_walk_depth_100/stock}{1.01}\times$. Все три расхождения тест разрешает, но
 полезной величины нет ни у одного.
 Параллельному сборщику отведён отдельный абзац ниже: одно число оказалось для него
 ответом не на тот вопрос.
@@ -776,7 +776,7 @@ $1.01$--$1.33$ и $0.33$--$0.79$ без него. На нетипизирова�
     среднее по шести. Пять конфигураций, существующих лишь для того, чтобы определить, какую
     оптимизацию теряет другая настройка --- \code{no-jit}, \code{no-inliner},
     \code{no-specialized-opcodes}, \code{no-simplifier} и \code{no-stable-frame}, ---
-    измерены, но на схему не вынесены; две из них, которые обнаруживают потерю, приводятся
+    измерены, но на схему не вынесены. Две из них, которые обнаруживают потерю, приводятся
     в тексте.}
   \label{fig:jitopts}
 \end{figure}
@@ -887,7 +887,7 @@ ASLR (\S\ref{sec:method}): замер с фиксированным размещ
 ответ, и о существовании второго никто бы не узнал.
 
 С чем тогда сравнивать эти \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,мс (быстрая
-раскладка; отсчёт взят из адаптивного прогона, а компилируемую строку адаптивный флаг не
+раскладка, отсчёт взят из адаптивного прогона, а компилируемую строку адаптивный флаг не
 двигает --- это показано следующим абзацем)? «В $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{16.6}$~раза быстрее Python с объектами» --- сравнение,
 напрашивающееся первым, и оно записывает на счёт типов то, что сделал компилятор, потому что
 вторая половина сравнения интерпретируется. То же ядро с объектами под тем же JIT занимает \meas{med:b6_static-fork_static:matmul96_int/fork_static/boxed_jit:ms}{48.4}\,мс, значит,
@@ -1267,7 +1267,7 @@ $\meas{ratio:b5_buildcfg-plain:exception_roundtrip/plain|b5_buildcfg-jit:excepti
 
 \paragraph{Постановка.} Обыкновенный смешанный конвейер на 20\,000 JSON-записях: разбор модулем
 \code{json} из стандартной библиотеки, классификация строкового поля по каждой записи (ветвистая),
-свёртка числовых полей (вычислительная; стадия \emph{агрегация} на
+свёртка числовых полей (вычислительная, стадия \emph{агрегация} на
 рисунке~\ref{fig:pipeline}), выдача сводки. Четыре варианта добавляют по одной технике
 за раз, и каждый обязан выдать побайтово ту же сводку. Весь набор прогоняется дважды: один раз на
 обычной сборке 3.14.6 и один раз на free-threaded.
