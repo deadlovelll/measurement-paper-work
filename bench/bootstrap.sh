@@ -225,6 +225,10 @@ fi
 
 # ---------------------------------------------------------------- builds
 
+say "0/6  performance governor and turbo off"
+note "host.json records these; nothing used to set them, and a reboot undoes them"
+bash bench/tune_machine.sh apply || note "could not tune the machine -- the campaign will measure the governor too"
+
 say "1/6  host topology, affinity masks and results/host.json"
 bash bench/host_topology.sh > /dev/null || note "host_topology failed"
 
@@ -292,6 +296,8 @@ UNIFORM="$UNIFORM" BIBLIO_ONLINE=1 bash bench/check_paper.sh
 gates=$?
 
 say "done"
+note "the machine is left on the performance governor with turbo off"
+note "put it back with:  bash bench/tune_machine.sh restore"
 echo "  fetched:$did"
 echo "  already present:$skipped"
 echo "  gates failing: $gates"
