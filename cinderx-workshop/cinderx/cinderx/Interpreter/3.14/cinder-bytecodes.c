@@ -615,8 +615,7 @@ dummy_func(
 #if ENABLE_SPECIALIZATION && defined(ENABLE_ADAPTIVE_STATIC_PYTHON)
                 if (adaptive_enabled) {
                     if (index < INT8_MAX && type < INT8_MAX) {
-                        int16_t *cache = (int16_t*)next_instr;
-                        *cache = (index << 8) | type;
+                        Ci_cache_write(CI_EXTOP_CACHE(next_instr), (index << 8) | type, 2);
                         _Ci_specialize(next_instr, STORE_LOCAL_CACHED);
                     }
                 }
@@ -935,8 +934,8 @@ dummy_func(
                     * without, the runtime won't be able to get the correct vtable from
                     * self when the type is passed in.
                     */
-                    int32_t *cache = (int32_t*)next_instr;
-                    *cache = load_method_static_cached_oparg(slot, is_classmethod);
+                    Ci_cache_write(CI_EXTOP_CACHE(next_instr),
+                                   load_method_static_cached_oparg(slot, is_classmethod), 4);
                     _Ci_specialize(next_instr, LOAD_METHOD_STATIC_CACHED);
                 }
             }
@@ -1003,14 +1002,12 @@ dummy_func(
                     if (_PyClassLoader_IsImmutable(container)) {
                         /* frozen type, we don't need to worry about indirecting */
                         specialize_with_value(next_instr, func, INVOKE_FUNCTION_CACHED, 0, 0);
-                    } else if (_Py_IsImmortal(container)) {
-                        // We can only grab a cached pointer if the container is immortal as we have no way
-                        // to invalidate if the container is freed.
-                        PyObject** funcptr = _PyClassLoader_ResolveIndirectPtr(target);
-                        PyObject ***cache = (PyObject ***)next_instr;
-                        *cache = funcptr;
-                        _Ci_specialize(next_instr, INVOKE_INDIRECT_CACHED);
                     }
+                    /* No INVOKE_INDIRECT_CACHED here. It would have to cache a PyObject**,
+                     * and a cache unit carries one payload byte (see Ci_cache_write),
+                     * so a pointer would cost eight units on every INVOKE_FUNCTION site
+                     * to serve the rare container that is immortal but not immutable.
+                     * Those sites stay unspecialized. */
                 }
 #endif
                 Py_DECREF(func);
@@ -1142,8 +1139,7 @@ dummy_func(
 #if ENABLE_SPECIALIZATION && defined(ENABLE_ADAPTIVE_STATIC_PYTHON)
                     if (adaptive_enabled) {
                         if (offset < INT32_MAX) {
-                            int32_t *cache = (int32_t*)next_instr;
-                            *cache = offset;
+                            Ci_cache_write(CI_EXTOP_CACHE(next_instr), offset, 4);
                             _Ci_specialize(next_instr, LOAD_OBJ_FIELD);
                         }
                     }
@@ -1166,8 +1162,7 @@ dummy_func(
                     if (adaptive_enabled) {
                         if (offset <= INT32_MAX >> 8) {
                             assert(field_type < 0xff);
-                            int32_t *cache = (int32_t*)next_instr;
-                            *cache = offset << 8 | field_type;
+                            Ci_cache_write(CI_EXTOP_CACHE(next_instr), offset << 8 | field_type, 4);
                             _Ci_specialize(next_instr, LOAD_PRIMITIVE_FIELD);
                         }
                     }
@@ -1202,8 +1197,7 @@ dummy_func(
 #if ENABLE_SPECIALIZATION && defined(ENABLE_ADAPTIVE_STATIC_PYTHON)
                     if (adaptive_enabled) {
                         if (offset <= INT32_MAX) {
-                            int32_t *cache = (int32_t*)next_instr;
-                            *cache = offset;
+                            Ci_cache_write(CI_EXTOP_CACHE(next_instr), offset, 4);
                             _Ci_specialize(next_instr, STORE_OBJ_FIELD);
                         }
                     }
@@ -1213,8 +1207,7 @@ dummy_func(
                     if (adaptive_enabled) {
                         if (offset <= INT32_MAX >> 8) {
                             assert(field_type < 0xff);
-                            int32_t *cache = (int32_t*)next_instr;
-                            *cache = offset << 8 | field_type;
+                            Ci_cache_write(CI_EXTOP_CACHE(next_instr), offset << 8 | field_type, 4);
                             _Ci_specialize(next_instr, STORE_PRIMITIVE_FIELD);
                         }
                     }
@@ -1355,13 +1348,235 @@ dummy_func(
                 Py_INCREF(value);
                 DECREF_INPUTS();
                 top[0] = PyStackRef_FromPyObjectSteal(value);
+            /* The specialized forms the adaptive interpreter rewrites the static
+             * opcodes into. Each reads what the base form worked out from
+             * co_consts once and left behind in the inline cache; the oparg is
+             * untouched, so the instruction can still be read (and de-optimised)
+             * as its unspecialized self. */
+            } else if (extop == CAST_CACHED) {
+                PyObject *val = PyStackRef_AsPyObjectBorrow(args[0]);
+                int32_t cache = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                int optional = cache & 0x01;
+                int exact = (cache >> 1) & 0x01;
+                PyTypeObject* type = Ci_cached_type(cache >> 2,
+                                                    GETITEM(FRAME_CO_CONSTS, extoparg),
+                                                    &optional, &exact);
+                if (type == NULL) {
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+                _PyStackRef res;
+                if (!_PyObject_TypeCheckOptional(val, type, optional, exact)) {
+                    if (type == &PyFloat_Type && PyObject_TypeCheck(val, &PyLong_Type)) {
+                        double dval = PyLong_AsDouble(val);
+                        if (dval == -1.0 && PyErr_Occurred()) {
+                            Py_DECREF(type);
+                            DECREF_INPUTS();
+                            ERROR_IF(true);
+                        }
+                        PyObject *fval = PyFloat_FromDouble(dval);
+                        if (fval == NULL) {
+                            Py_DECREF(type);
+                            DECREF_INPUTS();
+                            ERROR_IF(true);
+                        }
+                        res = PyStackRef_FromPyObjectSteal(fval);
+                    } else {
+                        PyErr_Format(
+                            PyExc_TypeError,
+                            exact ? "expected exactly '%s', got '%s'" : "expected '%s', got '%s'",
+                            type->tp_name,
+                            Py_TYPE(val)->tp_name);
+                        Py_DECREF(type);
+                        DECREF_INPUTS();
+                        ERROR_IF(true);
+                    }
+                } else {
+                    res = PyStackRef_FromPyObjectNew(val);
+                }
+
+                Py_DECREF(type);
+                DECREF_INPUTS();
+                top[0] = res;
+            } else if (extop == TP_ALLOC_CACHED) {
+                int optional;
+                int exact;
+                PyTypeObject *type = Ci_cached_type((int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4),
+                                                    GETITEM(FRAME_CO_CONSTS, extoparg),
+                                                    &optional, &exact);
+                PyObject *inst = type == NULL ? NULL : type->tp_alloc(type, 0);
+                Py_XDECREF(type);
+                DECREF_INPUTS();
+                ERROR_IF(inst == NULL);
+                top[0] = PyStackRef_FromPyObjectSteal(inst);
+            } else if (extop == BUILD_CHECKED_LIST_CACHED) {
+                PyObject* list_info = GETITEM(FRAME_CO_CONSTS, extoparg);
+                Py_ssize_t list_size = PyLong_AsLong(PyTuple_GET_ITEM(list_info, 1));
+                int optional;
+                int exact;
+                PyTypeObject* type = Ci_cached_type((int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4),
+                                                    PyTuple_GET_ITEM(list_info, 0),
+                                                    &optional, &exact);
+                PyObject *list = type == NULL ? NULL : Ci_CheckedList_New(type, list_size);
+                Py_XDECREF(type);
+                if (list == NULL) {
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+
+                for (Py_ssize_t i = 0; i < list_size; i++) {
+                    Ci_ListOrCheckedList_SET_ITEM(list, i, PyStackRef_AsPyObjectBorrow(args[i]));
+                }
+                DECREF_INPUTS();
+                top[0] = PyStackRef_FromPyObjectSteal(list);
+            } else if (extop == BUILD_CHECKED_MAP_CACHED) {
+                PyObject* map_info = GETITEM(FRAME_CO_CONSTS, extoparg);
+                Py_ssize_t map_size = PyLong_AsLong(PyTuple_GET_ITEM(map_info, 1));
+                int optional;
+                int exact;
+                PyTypeObject* type = Ci_cached_type((int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4),
+                                                    PyTuple_GET_ITEM(map_info, 0),
+                                                    &optional, &exact);
+                PyObject *map = type == NULL ? NULL : Ci_CheckedDict_NewPresized(type, map_size);
+                Py_XDECREF(type);
+                if (map == NULL) {
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+
+                if (ci_build_dict(args, map_size, map) < 0) {
+                    Py_DECREF(map);
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+                DECREF_INPUTS();
+                top[0] = PyStackRef_FromPyObjectSteal(map);
+            } else if (extop == STORE_LOCAL_CACHED) {
+                _PyStackRef val = args[0];
+                uint32_t cache = Ci_cache_read(CI_EXTOP_CACHE(next_instr), 2);
+                int type = cache & 0xFF;
+                int index = cache >> 8;
+
+                _PyStackRef tmp = GETLOCAL(index);
+                if (type == TYPED_DOUBLE) {
+                    GETLOCAL(index) = PyStackRef_DUP(val);
+                } else {
+                    Py_ssize_t ival = unbox_primitive_int(PyStackRef_AsPyObjectBorrow(val));
+                    GETLOCAL(index) = PyStackRef_FromPyObjectSteal(box_primitive(type, ival));
+                }
+                PyStackRef_XCLOSE(tmp);
+                DECREF_INPUTS();
+            } else if (extop == LOAD_OBJ_FIELD) {
+                PyObject *self = PyStackRef_AsPyObjectBorrow(args[0]);
+                Py_ssize_t offset = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                PyObject *value = *FIELD_OFFSET(self, offset);
+                if (value == NULL) {
+                    PyErr_Format(
+                        PyExc_AttributeError,
+                        "'%.50s' object has no attribute",
+                        Py_TYPE(self)->tp_name);
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+                Py_INCREF(value);
+                DECREF_INPUTS();
+                top[0] = PyStackRef_FromPyObjectSteal(value);
+            } else if (extop == LOAD_PRIMITIVE_FIELD) {
+                PyObject *self = PyStackRef_AsPyObjectBorrow(args[0]);
+                int32_t cache = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                PyObject *value = load_field(cache & 0xFF, ((char*)self) + (cache >> 8));
+                DECREF_INPUTS();
+                ERROR_IF(value == NULL);
+                top[0] = PyStackRef_FromPyObjectSteal(value);
+            } else if (extop == STORE_OBJ_FIELD) {
+                PyObject *value = PyStackRef_AsPyObjectBorrow(args[0]);
+                PyObject *self = PyStackRef_AsPyObjectBorrow(args[1]);
+                Py_ssize_t offset = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                PyObject** addr = FIELD_OFFSET(self, offset);
+                Py_INCREF(value);
+                Py_XDECREF(*addr);
+                *addr = value;
+                DECREF_INPUTS();
+            } else if (extop == STORE_PRIMITIVE_FIELD) {
+                PyObject *value = PyStackRef_AsPyObjectBorrow(args[0]);
+                PyObject *self = PyStackRef_AsPyObjectBorrow(args[1]);
+                int32_t cache = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                PyObject** addr = FIELD_OFFSET(self, (cache >> 8));
+                store_field(cache & 0xFF, (char*)addr, value);
+                DECREF_INPUTS();
+            } else if (extop == LOAD_METHOD_STATIC_CACHED) {
+                PyObject *self = PyStackRef_AsPyObjectBorrow(args[0]);
+                int32_t cache = (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4);
+                bool is_classmethod =
+                    load_method_static_cached_oparg_is_classmethod(cache);
+                Py_ssize_t slot = load_method_static_cached_oparg_slot(cache);
+
+                _PyType_VTable* vtable;
+                if (is_classmethod) {
+                    vtable = (_PyType_VTable*)(((PyTypeObject*)self)->tp_cache);
+                } else {
+                    vtable = (_PyType_VTable*)self->ob_type->tp_cache;
+                }
+
+                assert(!PyErr_Occurred());
+                StaticMethodInfo res =
+                    _PyClassLoader_LoadStaticMethod(vtable, slot, self);
+                if (res.lmr_func == NULL) {
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+
+                _PyStackRef self_ref = PyStackRef_DUP(args[0]);
+                DECREF_INPUTS();
+                top[0] = PyStackRef_FromPyObjectSteal(res.lmr_func);
+                top[1] = self_ref;
+            } else if (extop == INVOKE_FUNCTION_CACHED) {
+                int nargs = oparg >> 2;
+                /* Held until after the call, like the unspecialized form does:
+                 * dropping the container first can free what the function is
+                 * reached through while the call is still in flight. */
+                PyObject* container = NULL;
+                PyObject* func = _PyClassLoader_GetCachedValue(
+                    (int32_t)Ci_cache_read(CI_EXTOP_CACHE(next_instr), 4));
+                if (func == NULL) {
+                    /* The cache went stale -- the value was invalidated or the
+                     * indirection cell was cleared. Resolve the target the slow
+                     * way rather than deoptimising: an EXTENDED_OPCODE cannot be
+                     * rewritten back safely while it is executing. */
+                    PyErr_Clear();
+                    PyObject* value = GETITEM(FRAME_CO_CONSTS, extoparg);
+                    PyObject* target = PyTuple_GET_ITEM(value, 0);
+                    func = _PyClassLoader_ResolveFunction(target, &container);
+                    if (func == NULL) {
+                        container = NULL;
+                        DECREF_INPUTS();
+                        ERROR_IF(true);
+                    }
+                }
+
+                STACKREFS_TO_PYOBJECTS(args, nargs, args_o);
+                if (CONVERSION_FAILED(args_o)) {
+                    Py_DECREF(func);
+                    Py_XDECREF(container);
+                    DECREF_INPUTS();
+                    ERROR_IF(true);
+                }
+                PyObject *res = _PyObject_Vectorcall(func, args_o, nargs, NULL);
+                STACKREFS_TO_PYOBJECTS_CLEANUP(args_o);
+                Py_DECREF(func);
+                Py_XDECREF(container);
+                DECREF_INPUTS();
+                ERROR_IF(res == NULL);
+                top[0] = PyStackRef_FromPyObjectSteal(res);
             } else {
                 PyErr_Format(PyExc_RuntimeError,
                             "unsupported extended opcode: %d", extop);
                 DECREF_INPUTS();
                 ERROR_IF(true);
             }
-            SKIP_OVER(1);
+            // step over the static opcode itself and whatever inline cache the
+            // compiler reserved behind it
+            SKIP_OVER(1 + Ci_extop_cache_entries(extop));
         }
 
         override inst(RETURN_VALUE, (retval -- res)) {

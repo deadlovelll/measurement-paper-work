@@ -47,44 +47,52 @@ def init(
     hasconst.append(2)
     hasarg.append(2)
     cache_format["LOAD_FIELD"] = "{'cache': 2}"
+    inline_cache_entries["LOAD_FIELD"] = 4
     def_op("LOAD_OBJ_FIELD", 4)
     hasconst.append(4)
     hasarg.append(4)
     if "LOAD_FIELD" not in specializations:
         specializations["LOAD_FIELD"] = []
     specializations["LOAD_FIELD"].append("LOAD_OBJ_FIELD")
+    inline_cache_entries["LOAD_OBJ_FIELD"] = 4
     def_op("LOAD_PRIMITIVE_FIELD", 5)
     hasconst.append(5)
     hasarg.append(5)
     if "LOAD_FIELD" not in specializations:
         specializations["LOAD_FIELD"] = []
     specializations["LOAD_FIELD"].append("LOAD_PRIMITIVE_FIELD")
+    inline_cache_entries["LOAD_PRIMITIVE_FIELD"] = 4
     def_op("STORE_FIELD", 6)
     hasconst.append(6)
     hasarg.append(6)
     cache_format["STORE_FIELD"] = "{'cache': 2}"
+    inline_cache_entries["STORE_FIELD"] = 4
     def_op("STORE_OBJ_FIELD", 7)
     hasconst.append(7)
     hasarg.append(7)
     if "STORE_FIELD" not in specializations:
         specializations["STORE_FIELD"] = []
     specializations["STORE_FIELD"].append("STORE_OBJ_FIELD")
+    inline_cache_entries["STORE_OBJ_FIELD"] = 4
     def_op("STORE_PRIMITIVE_FIELD", 8)
     hasconst.append(8)
     hasarg.append(8)
     if "STORE_FIELD" not in specializations:
         specializations["STORE_FIELD"] = []
     specializations["STORE_FIELD"].append("STORE_PRIMITIVE_FIELD")
+    inline_cache_entries["STORE_PRIMITIVE_FIELD"] = 4
     def_op("BUILD_CHECKED_LIST", 9)
     hasconst.append(9)
     hasarg.append(9)
     cache_format["BUILD_CHECKED_LIST"] = "{'cache': 2}"
+    inline_cache_entries["BUILD_CHECKED_LIST"] = 4
     def_op("BUILD_CHECKED_LIST_CACHED", 10)
     hasconst.append(10)
     hasarg.append(10)
     if "BUILD_CHECKED_LIST" not in specializations:
         specializations["BUILD_CHECKED_LIST"] = []
     specializations["BUILD_CHECKED_LIST"].append("BUILD_CHECKED_LIST_CACHED")
+    inline_cache_entries["BUILD_CHECKED_LIST_CACHED"] = 4
     def_op("LOAD_TYPE", 11)
     hasconst.append(11)
     hasarg.append(11)
@@ -92,12 +100,14 @@ def init(
     hasconst.append(12)
     hasarg.append(12)
     cache_format["CAST"] = "{'cache': 2}"
+    inline_cache_entries["CAST"] = 4
     def_op("CAST_CACHED", 13)
     hasconst.append(13)
     hasarg.append(13)
     if "CAST" not in specializations:
         specializations["CAST"] = []
     specializations["CAST"].append("CAST_CACHED")
+    inline_cache_entries["CAST_CACHED"] = 4
     def_op("LOAD_LOCAL", 14)
     hasconst.append(14)
     hasarg.append(14)
@@ -105,12 +115,14 @@ def init(
     hasconst.append(15)
     hasarg.append(15)
     cache_format["STORE_LOCAL"] = "{'cache': 1}"
+    inline_cache_entries["STORE_LOCAL"] = 2
     def_op("STORE_LOCAL_CACHED", 16)
     hasconst.append(16)
     hasarg.append(16)
     if "STORE_LOCAL" not in specializations:
         specializations["STORE_LOCAL"] = []
     specializations["STORE_LOCAL"].append("STORE_LOCAL_CACHED")
+    inline_cache_entries["STORE_LOCAL_CACHED"] = 2
     def_op("PRIMITIVE_BOX", 17)
     hasarg.append(17)
     jrel_op("POP_JUMP_IF_ZERO", 100)
@@ -135,12 +147,14 @@ def init(
     hasconst.append(24)
     hasarg.append(24)
     cache_format["INVOKE_FUNCTION"] = "{'cache': 4}"
+    inline_cache_entries["INVOKE_FUNCTION"] = 4
     def_op("INVOKE_FUNCTION_CACHED", 25)
     hasconst.append(25)
     hasarg.append(25)
     if "INVOKE_FUNCTION" not in specializations:
         specializations["INVOKE_FUNCTION"] = []
     specializations["INVOKE_FUNCTION"].append("INVOKE_FUNCTION_CACHED")
+    inline_cache_entries["INVOKE_FUNCTION_CACHED"] = 4
     def_op("INVOKE_INDIRECT_CACHED", 26)
     hasconst.append(26)
     hasarg.append(26)
@@ -161,12 +175,14 @@ def init(
     hasconst.append(31)
     hasarg.append(31)
     cache_format["BUILD_CHECKED_MAP"] = "{'cache': 2}"
+    inline_cache_entries["BUILD_CHECKED_MAP"] = 4
     def_op("BUILD_CHECKED_MAP_CACHED", 32)
     hasconst.append(32)
     hasarg.append(32)
     if "BUILD_CHECKED_MAP" not in specializations:
         specializations["BUILD_CHECKED_MAP"] = []
     specializations["BUILD_CHECKED_MAP"].append("BUILD_CHECKED_MAP_CACHED")
+    inline_cache_entries["BUILD_CHECKED_MAP_CACHED"] = 4
     def_op("SEQUENCE_GET", 33)
     hasarg.append(33)
     def_op("SEQUENCE_SET", 34)
@@ -184,19 +200,23 @@ def init(
     hasconst.append(41)
     hasarg.append(41)
     cache_format["TP_ALLOC"] = "{'cache': 2}"
+    inline_cache_entries["TP_ALLOC"] = 4
     def_op("TP_ALLOC_CACHED", 42)
     hasconst.append(42)
     hasarg.append(42)
     if "TP_ALLOC" not in specializations:
         specializations["TP_ALLOC"] = []
     specializations["TP_ALLOC"].append("TP_ALLOC_CACHED")
+    inline_cache_entries["TP_ALLOC_CACHED"] = 4
     def_op("LOAD_METHOD_STATIC", 43)
     hasconst.append(43)
     hasarg.append(43)
     cache_format["LOAD_METHOD_STATIC"] = "{'cache': 2}"
+    inline_cache_entries["LOAD_METHOD_STATIC"] = 4
     def_op("LOAD_METHOD_STATIC_CACHED", 45)
     hasconst.append(45)
     hasarg.append(45)
     if "LOAD_METHOD_STATIC" not in specializations:
         specializations["LOAD_METHOD_STATIC"] = []
     specializations["LOAD_METHOD_STATIC"].append("LOAD_METHOD_STATIC_CACHED")
+    inline_cache_entries["LOAD_METHOD_STATIC_CACHED"] = 4

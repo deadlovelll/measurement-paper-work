@@ -18,6 +18,8 @@
 #define NEED_OPCODE_TABLES
 #include "cinderx/Interpreter/cinder_opcode.h"
 
+#include "cinderx/Interpreter/cinder_static_opcodes.h"
+
 #include "internal/pycore_stackref.h"
 #include "internal/pycore_interpframe.h"
 
@@ -233,6 +235,36 @@ static int ci_build_dict(_PyStackRef *map_items, Py_ssize_t map_size, PyObject *
     return 0;
 }
 
+/* A static instruction is laid out as
+ *
+ *     [EXTENDED_OPCODE | stack effects] [static opcode | oparg] [cache]...
+ *
+ * and inside the EXTENDED_OPCODE dispatcher `next_instr` points at the second
+ * unit, the one carrying the static opcode. The inline caches follow it, so
+ * that is where a specialization writes -- never over the opcode itself, and
+ * never over the prefix, which carries the stack effects the dispatcher needs.
+ */
+#define CI_EXTOP_CACHE(next_instr) ((next_instr) + 1)
+
+/* The type a specialized static opcode cached, or -- if the cache went stale,
+ * which is possible whenever the value cache is invalidated -- the one the
+ * unspecialized form would have resolved from co_consts.
+ *
+ * Returns a new reference, or NULL with an exception set. `optional` and
+ * `exact` are only written on the fallback path; a caller that recovers them
+ * from the cache itself must set them before calling.
+ */
+static PyTypeObject *
+Ci_cached_type(int32_t index, PyObject *type_descr, int *optional, int *exact)
+{
+    PyTypeObject *type = (PyTypeObject *)_PyClassLoader_GetCachedValue(index);
+    if (type != NULL) {
+        return type;
+    }
+    PyErr_Clear();
+    return _PyClassLoader_ResolveType(type_descr, optional, exact);
+}
+
 #if ENABLE_SPECIALIZATION && defined(ENABLE_ADAPTIVE_STATIC_PYTHON)
 static void _Ci_specialize(_Py_CODEUNIT *next_instr, int opcode);
 static void specialize_with_value(_Py_CODEUNIT *next_instr, PyObject *value, int opcode,
@@ -240,8 +272,8 @@ static void specialize_with_value(_Py_CODEUNIT *next_instr, PyObject *value, int
 {
     int32_t index = _PyClassLoader_CacheValue(value);
     if (index >= 0 && index <= (INT32_MAX >> 2)) {
-        int32_t *cache = (int32_t*)next_instr;
-        *cache = (int32_t)(index << shift) | bits;
+        Ci_cache_write(CI_EXTOP_CACHE(next_instr),
+                       (uint32_t)((index << shift) | bits), 4);
         _Ci_specialize(next_instr, opcode);
     }
 }
@@ -432,7 +464,16 @@ void Ci_InitOpcodes() {
 static void
 _Ci_specialize(_Py_CODEUNIT *next_instr, int opcode)
 {
-    (next_instr - 1)->op.code = opcode;
+    /* Rewrite the static opcode in place, leaving the EXTENDED_OPCODE prefix at
+     * next_instr[-1] and the oparg alone. Only the low byte is stored: the
+     * dispatcher puts EXTENDED_OPCODE_FLAG back on when it decodes.
+     *
+     * Writing the prefix instead -- which is what this used to do -- replaced
+     * EXTENDED_OPCODE with a bare number that collides with an ordinary
+     * CPython opcode (STORE_LOCAL_CACHED & 0xFF is 16, i.e. GET_ITER), so the
+     * next execution of that instruction dispatched somewhere else entirely.
+     */
+    next_instr->op.code = (uint8_t)(opcode & 0xFF);
 }
 
 int load_method_static_cached_oparg(Py_ssize_t slot, bool is_classmethod) {
