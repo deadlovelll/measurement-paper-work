@@ -1,14 +1,12 @@
 bench/venvs/
-cinderx-workshop/
+cinderx-workshop/cpython
+cinderx-workshop/cinder
 
 bench/build/
 bench/native_rs/target/
 *.so
 *.o
 *.a
-
-bench/affinity.txt
-bench/affinity-threads.txt
 
 logs/
 *.log

@@ -1,0 +1,6 @@
+# Our build output (large binaries, regeneratable)
+research/build-map/
+research/build-p1/
+
+# CinderX in-tree build scratch (setuptools build_temp + FetchContent deps)
+cpython/cinderx/scratch/
