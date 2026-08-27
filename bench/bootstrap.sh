@@ -153,6 +153,23 @@ want "six interpreters" test -x "$UNIFORM/v314/bin/python3.14"
 want "seven builds"     test -d "$REAL/w_plain"
 want "CinderX built"    test -d "$CINDER_OUT/fork314"
 
+# Not a prerequisite to install but a state to be in: an untuned machine measures the
+# frequency governor along with the interpreter, and every implementation by a different
+# amount. Step 0/6 sets it, so report rather than count it as missing.
+cpu_governor="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)"
+if [ "$(cat /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null)" = "1" ]; then
+  cpu_turbo=off
+elif [ "$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null)" = "0" ]; then
+  cpu_turbo=off
+else
+  cpu_turbo=on
+fi
+untuned=0
+[ "$cpu_governor" = performance ] || untuned=1
+[ "$cpu_turbo" = off ] || untuned=1
+printf '  %-22s %s, turbo %s%s\n' "machine" "$cpu_governor" "$cpu_turbo" \
+  "$([ "$untuned" -eq 1 ] && echo '  <- step 0/6 will set this' || true)"
+
 if [ "$STAGE" = "--check" ]; then
   echo
   if [ "$missing" -eq 0 ] && [ "$drift" -eq 0 ]; then
@@ -160,6 +177,10 @@ if [ "$STAGE" = "--check" ]; then
   else
     [ "$missing" -gt 0 ] && echo "$missing item(s) missing. Run without --check to install them."
     [ "$drift" -gt 0 ] && echo "$drift item(s) at a version the published numbers were not measured on."
+  fi
+  if [ "$untuned" -eq 1 ]; then
+    echo "the machine is not in the state the numbers were measured on:"
+    echo "  bash bench/tune_machine.sh apply     (bootstrap.sh does this itself at step 0/6)"
   fi
   exit 0
 fi
