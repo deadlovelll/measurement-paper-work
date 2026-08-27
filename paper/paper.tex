@@ -429,9 +429,17 @@ binary whose behaviour is not established here.
 
 The artifact accompanying this paper contains the measurement layer, all kernels in all
 languages, the interpreter build scripts, the raw \code{pyperf} result
-files and the figure and table generators. The full sequence is:
+files and the figure and table generators. One command runs all of it, taking a bare machine
+to both PDFs and pinning each toolchain to the version measured here; the steps it performs are
+listed below, because the order is load-bearing and the reasons for it belong on the record:
 
 \begin{Verbatim}[fontsize=\small,xleftmargin=1em]
+bash bench/bootstrap.sh                   # everything below, in this order, from a bare
+                                          # machine; --check, --deps, --build and --measure
+                                          # stop it earlier
+bash bench/tune_machine.sh apply          # performance governor, turbo off -- before the
+                                          # host is described, so the description is of the
+                                          # machine that will be measured
 bash bench/host_topology.sh               # CPU classes -> affinity + results/host.json
 OUT=<dir> bash bench/build_uniform.sh     # every interpreter: one compiler, one
                                           # configure line, 3.10-3.14 + free-threaded

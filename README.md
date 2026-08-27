@@ -22,6 +22,11 @@ configure line. No packaged interpreter contributes a number.
 paper/                      paper.tex     + tables/    + sections/    -> paper.pdf     (EN)
                             paper-ru.tex  + tables-ru/ + sections-ru/ -> paper-ru.pdf  (RU)
 bench/
+  bootstrap.sh              one command: bare machine -> toolchains -> builds -> campaign
+                            -> figures -> both PDFs -> every gate. --check/--deps/--build/
+                            --measure/--paper stop it earlier. Pins every version.
+  tune_machine.sh           performance governor and turbo off, and back again afterwards
+  check_paper.sh            all thirteen paper gates in one run
   harness/mp_pyperf.py      the pyperf layer: metadata, flag forwarding, correctness gate
   host_topology.sh          CPU classes -> affinity masks + results/host.json
   check_provenance.py       gate: all six interpreters share one configure line
@@ -61,82 +66,27 @@ Everything is built and measured on one machine, including Cinder and CinderX. T
 container and no second platform.
 
 ```bash
-# 0. the host: CPU classes, affinity masks, and a machine description for the paper's table.
-#    Writes bench/affinity.txt, bench/affinity-threads.txt and results/host.json.
-bash bench/host_topology.sh
-
-#    Measurement quality is decided here, and this part needs root:
-sudo sh -c 'for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                echo performance > $g; done
-            echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'
-#    Note what is deliberately NOT done: address-space randomisation stays on. The argument for
-#    measuring across many processes is that layout and allocator state differ between them.
-
-# 1..5, in dependency order, one at a time -- or run bench/build_everything.sh, which does all
-#      five and then the gates:
-ROOT_OUT=$HOME/mp-x86 bash bench/build_everything.sh
-
-#      equivalently, by hand:
-OUT=$HOME/mp-x86/uniform    bash bench/build_uniform.sh          # 3.10-3.14 + free-threaded, PGO
-UNIFORM=$HOME/mp-x86/uniform \
-                            bash bench/setup_env.sh              # venvs + pyperf. build_all.sh
-                                                                 # builds into these venvs, so
-                                                                 # this comes before it
-CODON_DIR=<codon> PYPY=$HOME/mp-x86/pypy/bin/pypy3 \
-                            bash bench/build_all.sh              # Cython, pybind11, Codon,
-                                                                 # C (6 flag sets + ladder), Rust
-OUT=$HOME/mp-x86/realbuilds LLVM19=$HOME/.local/llvm19/bin \
-                            bash bench/b5_buildflags/build_real.sh   # seven build configs; the
-                                                                     # tier-2 JIT one needs LLVM 19
-REAL=$HOME/mp-x86/realbuilds \
-                            bash bench/setup_env.sh              # and again for those seven:
-                                                                 # they are built without pip,
-                                                                 # so this pass has to follow
-                                                                 # build_real.sh
-OUT=$HOME/mp-x86/cinder     bash bench/b6_cinderx/build_cinderx.sh   # stock + fork + CinderX x2
-
-# 6. gates, before anything is measured
-python3 bench/check_provenance.py $HOME/mp-x86/uniform            # must PASS: one configure line
-python3 bench/check_provenance.py $HOME/mp-x86/realbuilds --expect-differences
-bash bench/b1_compute/codegen_diff.sh                             # which flags change the code
-bash bench/b2_branchy/codegen_check.sh                            # C vs Rust instruction counts,
-                                                                  # which table 6 is built from
-
-# 7. the campaign. Phases run one at a time on purpose, and the machine must be otherwise idle:
-#    a background job that only touches other cores is still visible in a parallel benchmark.
-UNIFORM=$HOME/mp-x86/uniform REAL=$HOME/mp-x86/realbuilds \
-CINDER=$HOME/mp-x86/cinder   PYPY=$HOME/mp-x86/pypy/bin/pypy3 \
-    bash bench/run_campaign.sh
-#    or a phase at a time: compute branchy versions spec threads builds pipeline cinderx pypy
-
-#    the cinderx phase covers only run_b6_native.sh; two more sets are separate commands:
-CINDER=$HOME/mp-x86/cinder bash bench/b6_cinderx/run_jitopts.sh         # JIT-option ablation
-$HOME/mp-x86/cinder/venv-cinder-adaptive/bin/python \
-    bench/b6_cinderx/run_gc_scale.py --label ...                        # collector sweep
-
-# 8. does the data deserve to reach the paper?
-bench/venvs/u313/bin/python bench/plots/verify_campaign.py   # drift, dispersion, two-pass
-                                                             # agreement, every non-ok verdict
-
-# 9. the paper
-bench/venvs/u313/bin/python bench/plots/make_figures.py     # figures/     (EN)
-bench/venvs/u313/bin/python bench/plots/make_tables.py      # tables/      (EN)
-bench/venvs/u313/bin/python bench/plots/make_figures_ru.py  # figures-ru/  (RU)
-bench/venvs/u313/bin/python bench/plots/make_tables_ru.py   # tables-ru/   (RU)
-bench/venvs/u313/bin/python bench/plots/check_overlaps.py        # layout gate, must exit 0
-bench/venvs/u313/bin/python bench/plots/check_overlaps.py --ru   # and in Russian
-bench/venvs/u313/bin/python bench/plots/phantom.py          # no traces of an absent document
-bench/venvs/u313/bin/python bench/plots/check_parity.py     # every number in both languages
-bench/venvs/u313/bin/python bench/plots/check_seams.py      # doubled words, case, stray $
-bench/venvs/u313/bin/python bench/plots/check_biblio.py --online   # authors, years, URLs
-bench/venvs/u313/bin/python bench/plots/check_tables.py     # EN/RU cells, positional refs
-bench/venvs/u313/bin/python bench/plots/check_protocol.py   # what the method section claims
-bench/venvs/u313/bin/python bench/plots/check_meas.py       # each number vs the run it names
-#    or all of the above at once:
-UNIFORM=$HOME/mp-x86/uniform BIBLIO_ONLINE=1 bash bench/check_paper.sh
-bench/venvs/u313/bin/python bench/plots/summarize.py        # every number quoted in the text
-cd paper && tectonic -X compile paper.tex && tectonic -X compile paper-ru.tex
+bash bench/bootstrap.sh
 ```
+
+That is the whole thing: it fetches the toolchains at the versions the published numbers were
+measured on, builds every interpreter and native artifact, sets the governor, runs the campaign,
+draws the figures and tables, compiles both PDFs and finishes with the gates. Stop it earlier
+with `--check` (inventory only, installs nothing), `--deps`, `--build` or `--measure`. Every
+stage is idempotent, so a stage that dies part way can be re-run.
+
+Two things to know before starting it. The campaign takes **hours**, and the machine must be
+otherwise idle for that whole time — a background job that only touches other cores is still
+visible in a parallel benchmark. And run **one** of it: two campaigns write to the same result
+files and contend for the same pinned cores, so both sets of numbers are worthless.
+
+Address-space randomisation is deliberately left on: the argument for measuring across many
+processes is that layout, allocator state, hash seed and code layout differ between them, and
+pinning the layout would remove exactly the variation the protocol is built to sample.
+
+`bench/` holds every step it runs as a separate script, should you want to drive one directly;
+`bash bench/bootstrap.sh --check` lists what the machine already has without installing
+anything.
 
 ## Measurement protocol (short version)
 
