@@ -40,6 +40,7 @@ run "seams"       "$PY" bench/plots/check_seams.py
 run "bibliography" "$PY" bench/plots/check_biblio.py ${BIBLIO_ONLINE:+--online}
 run "tables"      "$PY" bench/plots/check_tables.py
 run "protocol"    "$PY" bench/plots/check_protocol.py
+run "versions"    "$PY" bench/plots/check_versions.py --quiet
 run "numbers"     "$PY" bench/plots/check_meas.py
 run "phantom"     "$PY" bench/plots/phantom.py
 run "layout en"   "$PY" bench/plots/check_overlaps.py

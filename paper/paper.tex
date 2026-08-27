@@ -243,6 +243,16 @@ at run time, not as we intended them.
   \input{tables/t4_platforms.tex}
 \end{table}
 
+\begin{table}[t]
+  \centering
+  \caption{The measured software stack. Every version here is the one the build scripts pin and
+  install, and \code{bench/plots/check\_versions.py} fails if what is installed differs, so this
+  table states what ran rather than what was once written down.}
+  \label{tab:versions}
+  \small
+  \input{tables/t7_versions.tex}
+\end{table}
+
 \paragraph{Timing protocol.}
 Every timed number in this paper is produced by \code{pyperf}~\cite{pyperf}, whose protocol we
 use as it comes: for each

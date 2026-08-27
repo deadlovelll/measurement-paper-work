@@ -237,6 +237,46 @@ def t4_platforms() -> None:
     w("t4_platforms.tex", "\n".join(lines))
 
 
+def _pins() -> dict[str, str]:
+    """Every version the build scripts pin, so this table cannot drift from what they install."""
+    import re
+    found: dict[str, str] = {}
+    for name in ("bootstrap.sh", "setup_env.sh", "build_uniform.sh"):
+        path = os.path.join(ROOT, "bench", name)
+        if not os.path.exists(path):
+            continue
+        with open(path) as fh:
+            text = fh.read()
+        for m in re.finditer(r'^(\w+)="\$\{\1:-([^}]*)\}"', text, re.M):
+            found.setdefault(m.group(1), m.group(2))
+    return found
+
+
+def t7_versions() -> None:
+    """The measured software stack, read from the pins the build scripts install."""
+    p = _pins()
+    rows = [
+        ("CPython", ", ".join(p.get("VERSIONS", "?").split())),
+        ("C compiler", f"clang {p.get('CLANG_VERSION', '?')}"),
+        ("LLVM, for the tier-2 JIT build", p.get("LLVM19_VERSION", "?")),
+        ("Rust", p.get("RUST_VERSION", "?")),
+        ("Codon", p.get("CODON_VERSION", "?")),
+        ("PyPy", p.get("PYPY_VERSION", "?")),
+        ("pyperf", p.get("PYPERF_VERSION", "?")),
+        ("NumPy", p.get("NUMPY_VERSION", "?")),
+        ("Numba", p.get("NUMBA_VERSION", "?")),
+        ("Cython", p.get("CYTHON_VERSION", "?")),
+        ("pybind11", p.get("PYBIND11_VERSION", "?")),
+        ("threadpoolctl", p.get("THREADPOOLCTL_VERSION", "?")),
+    ]
+    lines = [r"\begin{tabular}{ll}", r"\toprule",
+             r"component & version \\", r"\midrule"]
+    for a, b in rows:
+        lines.append(f"{a} & {tex_escape(str(b))} " + r"\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    w("t7_versions.tex", "\n".join(lines))
+
+
 def _gc_modes() -> dict[str, tuple[float, float | None]]:
     """(serial s, parallel s) per heap composition, plus the stock row."""
     grecs = ok(load("b6_gcscale-"))
@@ -452,7 +492,7 @@ def t6_codegen() -> None:
 
 def main() -> None:
     for fn in (t1_compute, t2_branchy, t3_runtime_facts, t4_platforms, t5_cinder_matrix,
-               t6_codegen):
+               t6_codegen, t7_versions):
         try:
             fn()
         except Exception as exc:
