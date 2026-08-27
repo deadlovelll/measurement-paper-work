@@ -468,6 +468,10 @@ class BuildExt(build_ext):
         set_option("ENABLE_PERF_TRAMPOLINE", 1)
         set_option("ENABLE_SYMBOLIZER", 1)
         set_option("ENABLE_USDT", 1)
+        # The xxclassloader test module. Off by default: it publishes a builtin
+        # module with unsafe_change_type and a heap walker, which belongs in a
+        # test build and not in one that is being measured.
+        set_option("ENABLE_XXCLASSLOADER", 0)
         set_option("ENABLE_ZLIB", 1)
 
         for name, value in options.items():
