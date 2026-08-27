@@ -232,7 +232,7 @@ say "2/6  six interpreters from release tarballs, one compiler, one configure li
 OUT="$UNIFORM" bash bench/build_uniform.sh || note "build_uniform failed"
 
 say "3/6  venvs on those interpreters (build_all.sh builds into them, so this comes first)"
-UNIFORM="$UNIFORM" PYPY="$PYPY_DIR/bin/pypy3" bash bench/setup_env.sh || note "setup_env failed"
+UNIFORM="$UNIFORM" PYPY="$PYPY_DIR/bin/pypy3" CODON_DIR="$(codon_root || printf %s "$CODON_DIR")" bash bench/setup_env.sh || note "setup_env failed"
 
 say "4/6  native artifacts: Cython, pybind11, Codon, C flag variants, ladder, Rust"
 CODON_DIR="$(codon_root || printf %s "$CODON_DIR")" PYPY="$PYPY_DIR/bin/pypy3" bash bench/build_all.sh || note "build_all failed"
@@ -241,7 +241,7 @@ say "5/6  seven build configurations of one 3.14.6 tree"
 OUT="$REAL" LLVM19="$LLVM19" bash bench/b5_buildflags/build_real.sh || note "build_real failed"
 
 say "5b/6 pyperf into those seven: they are configured without pip, so this pass follows"
-UNIFORM="$UNIFORM" REAL="$REAL" PYPY="$PYPY_DIR/bin/pypy3" bash bench/setup_env.sh || note "setup_env (REAL) failed"
+UNIFORM="$UNIFORM" REAL="$REAL" PYPY="$PYPY_DIR/bin/pypy3" CODON_DIR="$(codon_root || printf %s "$CODON_DIR")" bash bench/setup_env.sh || note "setup_env (REAL) failed"
 
 say "6/6  Cinder fork and CinderX"
 OUT="$CINDER_OUT" bash bench/b6_cinderx/build_cinderx.sh || note "build_cinderx failed"

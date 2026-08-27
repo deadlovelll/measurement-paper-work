@@ -15,6 +15,15 @@ PYBIND11_VERSION="${PYBIND11_VERSION:-3.0.4}"
 THREADPOOLCTL_VERSION="${THREADPOOLCTL_VERSION:-3.6.0}"
 MATPLOTLIB_VERSION="${MATPLOTLIB_VERSION:-3.11.1}"
 VENVS="$ROOT/bench/venvs"
+
+# Codon's @codon.jit path is a Python package shipped inside the Codon deployment rather than
+# on PyPI, and nothing installed it. Without it the three codon_jit rows of b1_compute and the
+# three of b2_branchy come back "unavailable" -- honestly recorded in the sidecar, but absent
+# from the run the paper reports. Accept either unpack layout, as bootstrap.sh does.
+CODON_ROOT="${CODON_DIR:-$HOME/mp-x86/codon}"
+for d in "$CODON_ROOT/codon-deploy-linux-x86_64" "$CODON_ROOT"; do
+  [ -x "$d/bin/codon" ] && { CODON_ROOT="$d"; break; }
+done
 mkdir -p "$VENVS"
 
 declare -a PY=(
@@ -39,6 +48,13 @@ for entry in "${PY[@]}"; do
   else
     echo "  $tag numba UNAVAILABLE"
   fi
+  if [ -d "$CODON_ROOT/python" ]; then
+    "$P" -m pip install -q "$CODON_ROOT/python" 2>&1 | tail -2
+    "$P" -c "import codon; print('  $tag codon-jit', __import__('importlib.metadata', fromlist=['x']).version('codon-jit'))" 2>&1 | tail -1
+  else
+    echo "  $tag codon-jit UNAVAILABLE: no python/ under $CODON_ROOT"
+  fi
+
   "$P" -c "
 import sys, numpy, pyperf
 print('  $tag ok', sys.version.split()[0], 'numpy', numpy.__version__, 'pyperf', pyperf.__version__)"
