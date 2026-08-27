@@ -8,6 +8,7 @@
 #include "cinderx/Common/log.h"
 #include "cinderx/Common/opcode_stubs.h"
 #include "cinderx/Interpreter/cinder_opcode.h"
+#include "cinderx/Interpreter/cinder_static_opcodes.h"
 #include "cinderx/Jit/bytecode_offsets.h"
 #include "cinderx/Jit/threaded_compile.h"
 

@@ -24,7 +24,16 @@ BCIndex BytecodeInstruction::opcodeIndex() const {
 int BytecodeInstruction::opcode() const {
   int op = _Py_OPCODE(word());
   if (extendedOpcode_) {
+#if PY_VERSION_HEX >= 0x030E0000
+    // Report a static opcode the adaptive interpreter has specialized as the
+    // form the compiler emitted. Specializing only rewrites the opcode byte --
+    // the oparg and the instruction's length are untouched -- so the base form
+    // is still a faithful reading, and the JIT does not need to know about the
+    // specialized ones.
+    return Ci_extop_deopt(EXTENDED_OPCODE_FLAG | op);
+#else
     return EXTENDED_OPCODE_FLAG | op;
+#endif
   }
   return op;
 }
@@ -189,8 +198,17 @@ BCOffset BytecodeInstruction::getJumpTarget() const {
 }
 
 BCOffset BytecodeInstruction::nextInstrOffset() const {
-  return BCOffset{
-      opcodeIndex() + inlineCacheSize(code_, opcodeIndex().value()) + 1};
+  BCIndex idx = opcodeIndex();
+#if PY_VERSION_HEX >= 0x030E0000
+  if (extendedOpcode_) {
+    // CPython's cache table cannot be asked about a static opcode: it is not in
+    // it, and its low byte means an unrelated opcode there.
+    return BCOffset{
+        idx + Ci_extop_cache_entries(EXTENDED_OPCODE_FLAG | _Py_OPCODE(word())) +
+        1};
+  }
+#endif
+  return BCOffset{idx + inlineCacheSize(code_, idx.value()) + 1};
 }
 
 _Py_CODEUNIT BytecodeInstruction::word() const {

@@ -912,16 +912,28 @@ JITRT_LoadGlobal(PyObject* globals, PyObject* builtins, PyObject* name) {
   return result;
 }
 
+// `f_globals` and `f_builtins` are documented in pycore_interpframe_structs.h as
+// "Only valid if not on C stack", and a JIT frame only has them filled in when it
+// is materialized (Jit/frame.cpp does that right after jitFrameGetFunction). These
+// helpers run on frames that have not been materialized -- they exist for the
+// -X cinderx-jit-stable-frame=0 path, which is the path that does not bake globals
+// into the compiled code -- so reading the fields directly hands NULL to
+// _PyDict_LoadGlobal and segfaults. Take them from the function instead, which is
+// where the frame would have copied them from anyway.
 PyObject* JITRT_LoadGlobalFromThreadState(
     PyThreadState* tstate,
     PyObject* name) {
   _PyInterpreterFrame* frame = currentFrame(tstate);
-  return JITRT_LoadGlobal(frame->f_globals, frame->f_builtins, name);
+  BorrowedRef<PyFunctionObject> func = jit::jitFrameGetFunction(frame);
+  JIT_DCHECK(func != nullptr, "JIT frame has no function to read globals from");
+  return JITRT_LoadGlobal(func->func_globals, func->func_builtins, name);
 }
 
 PyObject* JITRT_LoadGlobalsDict(PyThreadState* tstate) {
   _PyInterpreterFrame* frame = currentFrame(tstate);
-  return frame->f_globals;
+  BorrowedRef<PyFunctionObject> func = jit::jitFrameGetFunction(frame);
+  JIT_DCHECK(func != nullptr, "JIT frame has no function to read globals from");
+  return func->func_globals;
 }
 
 PyObject* JITRT_LoadFunctionIndirect(PyObject** func, PyObject* descr) {
