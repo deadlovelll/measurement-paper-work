@@ -432,50 +432,25 @@ $1.014$ от самого быстрого, а девяностый процен
 
 Артефакт, сопровождающий работу, содержит измерительный слой, все ядра на всех языках, скрипты
 сборки интерпретаторов, сырые файлы результатов \code{pyperf} и генераторы
-графиков и таблиц. Всё это запускается одной командой: она доводит машину с нуля до обоих
-PDF и закрепляет каждый инструмент на той версии, на которой снимались числа. Её шаги
-перечислены ниже, потому что порядок здесь существенный, а причины стоит держать на виду:
+графиков и таблиц. Всё это запускается одной командой, которая доводит машину с нуля до обоих PDF и закрепляет
+каждый инструмент на той версии, на которой снимались числа:
 
 \begin{Verbatim}[fontsize=\small,xleftmargin=1em]
-bash bench/bootstrap.sh                   # всё, что ниже, в том же порядке, начиная
-                                          # с пустой машины; --check, --deps, --build
-                                          # и --measure останавливают раньше
-bash bench/tune_machine.sh apply          # governor performance, турбо выключено; идёт
-                                          # до описания хоста, чтобы в описание попал
-                                          # тот режим, в котором пойдут измерения
-bash bench/host_topology.sh               # классы ядер -> привязка + results/host.json
-OUT=<dir> bash bench/build_uniform.sh     # каждый интерпретатор: один компилятор, одна
-                                          # строка configure, 3.10-3.14 + free-threaded
-UNIFORM=<dir> bash bench/setup_env.sh     # venv на этих интерпретаторах; build_all.sh
-                                          # собирает в них, поэтому идёт первым
-CODON_DIR=<dir> PYPY=<pypy>/bin/pypy3 \
-  bash bench/build_all.sh                 # Cython, pybind11, Codon, C (6 наборов флагов +
-                                          # лестница накопителей), Rust
-OUT=<dir> LLVM19=<llvm19>/bin \
-  bash bench/b5_buildflags/build_real.sh  # семь конфигураций сборки; для tier-2 JIT
-                                          # нужен LLVM 19
-REAL=<dir> bash bench/setup_env.sh        # и ещё раз, для этих семи: они собраны без
-                                          # pip, поэтому этот проход идёт после
-                                          # build_real.sh
-bash bench/b2_branchy/codegen_check.sh    # results/codegen/summary.json для таблицы
-                                          # со счётчиками инструкций C против Rust
-UNIFORM=<dir> REAL=<dir> PYPY=<pypy>/bin/pypy3 bash bench/run_campaign.sh \
-    compute branchy versions spec threads builds pipeline pypy
-OUT=/path/cinder bash bench/b6_cinderx/build_cinderx.sh
-CINDER=/path/cinder bash bench/b6_cinderx/run_b6_native.sh   # обе конфигурации CinderX
-CINDER=/path/cinder bash bench/b6_cinderx/run_jitopts.sh     # абляция опций JIT
-<venv>/bin/python bench/b6_cinderx/run_gc_scale.py --label ...  # развёртка по сборщику
-<venv>/bin/python bench/plots/make_figures.py     # figures/     (английские подписи)
-<venv>/bin/python bench/plots/make_tables.py
-<venv>/bin/python bench/plots/make_figures_ru.py  # figures-ru/  (те же данные, русские подписи)
-<venv>/bin/python bench/plots/make_tables_ru.py
-<venv>/bin/python bench/plots/check_overlaps.py       # проверка вёрстки; должна вернуть 0
-<venv>/bin/python bench/plots/check_overlaps.py --ru  # то же для русских рисунков
-<venv>/bin/python bench/plots/summarize.py        # каждое число, приведённое в тексте
+bash bench/bootstrap.sh
 \end{Verbatim}
 
 \noindent
-Каждый график и каждая таблица пишутся этими генераторами из \code{results/pyperf/}, и каждая
+Она проходит все шаги в том единственном порядке, в котором они работают: режим процессора,
+описание хоста, все интерпретаторы с одной строкой \code{configure}, окружения, в которых они
+измеряются, нативные артефакты, семь конфигураций сборки, форк Cinder и CinderX, саму кампанию,
+рисунки и таблицы на обоих языках, оба PDF и проверки. Ключи \code{--check}, \code{--deps},
+\code{--build} и \code{--measure} останавливают её раньше; каждый этап идемпотентен, поэтому
+упавший на середине можно перезапустить; а любой шаг лежит в \code{bench/} отдельным скриптом,
+если его захочется выполнить вручную.
+
+\noindent
+Каждый график и каждая таблица пишутся из \code{results/pyperf/} генераторами в
+\code{bench/plots/}, и каждая
 цифра прозы выведена из тех же файлов, а не записана по ходу прогона: \code{summarize.py} печатает
 медианы и отношения рядом с записями, из которых они взяты, а вердикты значимости --- это
 \code{pyperf compare\_to} по двум наборам значений. Файл результатов --- это собственный формат pyperf, поэтому его можно прочитать

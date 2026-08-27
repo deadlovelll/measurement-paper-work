@@ -429,47 +429,25 @@ binary whose behaviour is not established here.
 
 The artifact accompanying this paper contains the measurement layer, all kernels in all
 languages, the interpreter build scripts, the raw \code{pyperf} result
-files and the figure and table generators. One command runs all of it, taking a bare machine
-to both PDFs and pinning each toolchain to the version measured here; the steps it performs are
-listed below, because the order is load-bearing and the reasons for it belong on the record:
+files and the figure and table generators. One command runs all of it, taking a bare machine to both PDFs and pinning every toolchain to
+the version measured here:
 
 \begin{Verbatim}[fontsize=\small,xleftmargin=1em]
-bash bench/bootstrap.sh                   # everything below, in this order, from a bare
-                                          # machine; --check, --deps, --build and --measure
-                                          # stop it earlier
-bash bench/tune_machine.sh apply          # performance governor, turbo off -- before the
-                                          # host is described, so the description is of the
-                                          # machine that will be measured
-bash bench/host_topology.sh               # CPU classes -> affinity + results/host.json
-OUT=<dir> bash bench/build_uniform.sh     # every interpreter: one compiler, one
-                                          # configure line, 3.10-3.14 + free-threaded
-UNIFORM=<dir> bash bench/setup_env.sh     # venvs on those interpreters; build_all.sh
-                                          # builds into them, so this comes first
-CODON_DIR=<dir> PYPY=<pypy>/bin/pypy3 \
-  bash bench/build_all.sh                 # Cython, pybind11, Codon, C (6 flag sets +
-                                          # the accumulator ladder), Rust
-OUT=<dir> LLVM19=<llvm19>/bin \
-  bash bench/b5_buildflags/build_real.sh  # the seven build configurations; the tier-2
-                                          # JIT one needs LLVM 19
-REAL=<dir> bash bench/setup_env.sh        # and again, for those seven: they are built
-                                          # without pip, so this pass has to come after
-                                          # build_real.sh
-bash bench/b2_branchy/codegen_check.sh    # results/codegen/summary.json, for the
-                                          # C-vs-Rust instruction-count table
-UNIFORM=<dir> REAL=<dir> PYPY=<pypy>/bin/pypy3 bash bench/run_campaign.sh \
-    compute branchy versions spec threads builds pipeline pypy
-OUT=/path/cinder bash bench/b6_cinderx/build_cinderx.sh
-CINDER=/path/cinder bash bench/b6_cinderx/run_b6_native.sh   # both CinderX configurations
-CINDER=/path/cinder bash bench/b6_cinderx/run_jitopts.sh     # the JIT-option ablation
-<venv>/bin/python bench/b6_cinderx/run_gc_scale.py --label ...  # the collector sweep
-<venv>/bin/python bench/plots/check_overlaps.py   # layout gate; must exit 0
-<venv>/bin/python bench/plots/make_figures.py
-<venv>/bin/python bench/plots/make_tables.py
-<venv>/bin/python bench/plots/summarize.py        # every number quoted in the text
+bash bench/bootstrap.sh
 \end{Verbatim}
 
 \noindent
-Every figure and table is written by those generators from \code{results/pyperf/}, and every
+It performs, in the one order that works: the governor and turbo, the host description, every
+interpreter from one configure line, the environments those are measured in, the native
+artifacts, the seven build configurations, the Cinder fork and CinderX, the campaign itself,
+the figures and tables in both languages, both PDFs, and the gates. \code{--check},
+\code{--deps}, \code{--build} and \code{--measure} stop it earlier; every stage is
+idempotent, so one that fails part way can be re-run; and each step is also a script of its own
+under \code{bench/} for anyone who would rather drive it directly.
+
+\noindent
+Every figure and table is written from \code{results/pyperf/} by the generators in
+\code{bench/plots/}, and every
 number quoted in the prose is derived from the same files rather than from a note taken while
 running: \code{summarize.py} prints the medians and ratios next to the records they come from,
 and the significance verdicts are \code{pyperf compare\_to} over the two sets of values. A result file is pyperf's own format, so it can also be read with \code{pyperf
