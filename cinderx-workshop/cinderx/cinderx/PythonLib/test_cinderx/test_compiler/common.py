@@ -119,16 +119,9 @@ class CompilerTest(TestCase):
             yield from dis.get_instructions(x)
             return
 
-        extended = False
-        for instr in dis.get_instructions(x):
-            if instr.opname == "EXTENDED_OPCODE":
-                extended = True
-                yield instr
-            elif extended and instr.opname != "EXTENDED_ARG":
-                yield self.make_static_instr(instr, x)
-                extended = False
-            else:
-                yield instr
+        from cinderx.compiler import static_instructions
+
+        yield from static_instructions(x)
 
     def assertNotInBytecode(
         self, x: Disassembleable, opname: str, argval: object = _UNSPECIFIED

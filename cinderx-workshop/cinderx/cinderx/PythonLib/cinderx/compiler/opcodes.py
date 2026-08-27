@@ -20,6 +20,12 @@ from .opcodebase import Opcode
 STATIC_OPMAP: dict[str, int] = {}
 STATIC_OPNAMES: list[str] = [f"<{i}>" for i in range(256)]
 STATIC_CONST_OPCODES: list[int] = []
+# Specialized static opcode -> the form the compiler emitted. The adaptive
+# interpreter rewrites the opcode in place, so without this a disassembly taken
+# after the code has run reports LOAD_OBJ_FIELD where the source said
+# LOAD_FIELD -- the same reason CPython's dis reports LOAD_ATTR rather than
+# LOAD_ATTR_SLOT unless it is asked for the adaptive form.
+STATIC_DEOPT: dict[int, int] = {}
 
 if sys.version_info >= (3, 12):
     # pyre-fixme[21]: Could not find name `_cache_format` in `opcode` (stubbed).
@@ -63,6 +69,17 @@ if sys.version_info >= (3, 12):
         hasarg.append(126)
 
     opmap.update(STATIC_OPMAP)
+
+    # Derived from the specialization table rather than written out, so it
+    # cannot drift from the specializations the interpreter actually performs.
+    for _base_name, _specialized_names in _specializations.items():
+        if _base_name not in STATIC_OPMAP:
+            continue
+        for _specialized_name in _specialized_names:
+            if _specialized_name in STATIC_OPMAP:
+                STATIC_DEOPT[STATIC_OPMAP[_specialized_name]] = STATIC_OPMAP[
+                    _base_name
+                ]
 
     if "dis" in sys.modules:
         # Fix up dis module to use the CinderX opcodes
