@@ -7,8 +7,8 @@
 \question{Question.}{How much does leaving the interpreter buy on a compute-bound kernel,
 and how much of that depends on which technology you leave it with? Six technologies are
 available to an engineer for the same loop --- ahead-of-time compilation, two JITs, two foreign
-function interfaces and a vectorised library --- and the decision between them is usually made
-without a like-for-like number for any of them.}
+function interfaces and a vectorised library --- and choosing between them calls for a
+like-for-like number on each.}
 
 \paragraph{Setup.} Three kernels: a sequential sum of $10^6$ \code{float64} values (the
 canonical example), a $200{\times}150$ mandelbrot escape-time grid with 30 iterations
@@ -45,8 +45,8 @@ cdylib with \code{target-cpu=native} --- which is the default recipe, and which
 \paragraph{Result: the compiled routes agree, and the library and the flag do not.}
 Table~\ref{tab:compute} and Figure~\ref{fig:compute} give the measurement. On the array-sum
 kernel --- summing $10^6$ \code{float64} values --- the pure-Python loop takes
-\meas{med:b1_compute-314:arraysum/cpython_loop:ms}{32.23}\,ms and the builtin \code{sum()} \meas{med:b1_compute-314:arraysum/cpython_builtin_sum:ms}{6.25}\,ms --- $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/cpython_builtin_sum}{5.2}\times$ for the one change that needs no
-build step at all --- while \emph{every} statically compiled implementation lands in a band
+\meas{med:b1_compute-314:arraysum/cpython_loop:ms}{32.23}\,ms and the builtin \code{sum()} \meas{med:b1_compute-314:arraysum/cpython_builtin_sum:ms}{6.25}\,ms, i.e.\ $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/cpython_builtin_sum}{5.2}\times$ for the one change that needs no
+build step at all. Meanwhile \emph{every} statically compiled implementation lands in a band
 \meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/codon_pyext_ptr}{0.31}\,\% wide:
 Cython 31.9$\times$, Numba 31.9$\times$, C through ctypes 31.8$\times$, C through pybind11
 31.9$\times$, Rust 31.8$\times$, Codon ahead of time 31.9$\times$ and the same with pointer
@@ -66,12 +66,13 @@ well, by a tenth of a per cent; the one place they separate by a margin worth se
 mandelbrot, by \meas{pct:b1_compute-314:mandelbrot/c_ctypes|b1_compute-314:mandelbrot/c_pybind11}{3.3}\% ($t=48.3$) --- same source, same flags, two link paths, and a
 useful reminder of how large ``the same program, twice'' can measure.
 
-Four observations are more interesting than the headline number.
+What is more interesting than the headline number is this.
 
 First, \textbf{the plateau is not set by the language}. Numba with \code{fastmath} reaches
-76.9$\times$ on the array sum --- $\meas{ratio:b1_compute-314:arraysum/numba|b1_compute-314:arraysum/numba_fastmath}{2.41}\times$ beyond the compiled plateau --- and the same C
-source compiled with \code{-ffast-math} reaches \meas{med:b1_flags-314:arraysum/O3native_ffast:ms}{0.418}\,ms, i.e.\ 77.1$\times$
-(\S\ref{sec:rq1b}). Nothing about the language changed; what changed is the permission to
+$\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/numba_fastmath}{76.9}\times$ on the array sum --- $\meas{ratio:b1_compute-314:arraysum/numba|b1_compute-314:arraysum/numba_fastmath}{2.41}\times$ beyond the compiled plateau --- and the same C
+source compiled with \code{-ffast-math} reaches \meas{med:b1_flags-314:arraysum/O3native_ffast:ms}{0.418}\,ms, i.e.\ $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_flags-314:arraysum/O3native_ffast}{77.1}\times$
+(\S\ref{sec:rq1b}). The pure-Python baseline is taken from the present section's suite, since the
+flags suite has none: this is the one ratio in the paper drawn across two suites. Nothing about the language changed; what changed is the permission to
 reassociate floating-point additions, which breaks the serial dependency chain of the
 accumulator. \S\ref{sec:rq1b} shows the factor belongs to that chain rather than to any
 compiler, by reproducing it at unchanged flags.
@@ -288,8 +289,8 @@ and the byte-identical variants land within \meas{pct:b1_flags-314:matmul/O2|b1_
 separates the $\meas{ratio:b1_flags-314:matmul/O3native|b1_flags-314:matmul/O2}{1.80}\times$ architecture-flag effect above from noise, and leaves nothing at all
 to report about \code{-O2} against \code{-O3}.
 
-\paragraph{Finding.} Three things, in order of how much they change a decision. First, the
-optimisation level that dominates build advice is not a variable for kernels of this shape:
+\paragraph{Finding.} In order of how much they change a decision. First, the
+optimisation level, the first thing changed in a build line, is not a variable for kernels of this shape:
 \code{-O2} and \code{-O3} are the same program on two of the three, and where they are not, they
 are not a different time either --- so a study that reports a timing difference between them is
 reporting its own noise. Second, the architecture flag is a real variable on this target and it
@@ -511,7 +512,7 @@ but it is not where it would be most natural to look for it.
 
 \paragraph{The boundary itself.} Figure~\ref{fig:ffi} measures one call with an empty
 callee: Cython \meas{med:b1_compute-314:call_overhead/cython:ns}{26}\,ns, a plain Python function \meas{med:b1_compute-314:call_overhead/python_function:ns}{31}\,ns, a Numba dispatcher \meas{med:b1_compute-314:call_overhead/numba:ns}{43}\,ns, a pybind11
-function \meas{med:b1_compute-314:call_overhead/c_pybind11:ns}{59}\,ns, and \code{ctypes} \meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}\,ns. Two consequences. First, an FFI call is not free
+function \meas{med:b1_compute-314:call_overhead/c_pybind11:ns}{59}\,ns, and \code{ctypes} \meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}\,ns. Consequences follow. First, an FFI call is not free
 but it is cheap: at $\approx 10^2$\,ns, a kernel doing $\ge 20\,\mu$s of work pays under 1\%
 for the crossing even across \code{ctypes}, and $\ge 6\,\mu$s is enough for the cheaper bindings. Second, \code{ctypes} --- the most convenient way to call native code ---
 is the most expensive boundary, $\meas{ratio:b1_compute-314:call_overhead/c_ctypes|b1_compute-314:call_overhead/python_function}{5.3}\times$ a Python-level call, so per-record FFI calls are
@@ -634,7 +635,7 @@ creation time the \code{\_\_slots\_\_} advantage shrinks from \meas{pct:b3_runti
 (3.12) and actually \emph{reverses} on 3.13, where slotted instances are \meas{pct:b3_runtime-v313:create_slots_obj/v313|b3_runtime-v313:create_plain_obj/v313}{8}\% slower than
 dict-based ones (6.48 vs \meas{med:b3_runtime-v313:create_plain_obj/v313:ms}{5.98}\,ms per 20\,000) --- before returning to an \meas{pct:b3_runtime-v314:create_plain_obj/v314|b3_runtime-v314:create_slots_obj/v314}{18}\% advantage on 3.14,
 where the structural probe says the two shapes still cost the allocator the same. The mechanism
-the rule is usually justified by --- one allocation fewer per instance --- therefore stopped
+the rule is justified by --- one allocation fewer per instance --- therefore stopped
 applying at 3.13, while the difference in creation time did not: \code{\_\_slots\_\_} is still
 worth \meas{pct:b3_runtime-v314:create_plain_obj/v314|b3_runtime-v314:create_slots_obj/v314}{18}\% on 3.14, for a reason these measurements do not identify.
 The memory row of Table~\ref{tab:facts} is the one that costs rather than pays: peak RSS
@@ -664,7 +665,7 @@ object-heavy code: attribute and method operations are $1.97$--$\meas{ratio:b3_r
 on 3.10, and the geometric mean over the whole suite is $\meas{geomean:b3_runtime-v310|b3_runtime-v314}{1.45}\times$. Three refinements come with
 that. The gain is not spread evenly across releases --- 3.11 delivers most of it, 3.12 and 3.13
 give part of it back, and 3.14 recovers it and adds more --- so ``upgrade'' is good advice and
-``every release helps'' is not. Of the mechanisms usually credited, our measurements attribute
+``every release helps'' is not. Of the mechanisms named in the release notes for these versions, our measurements attribute
 gains to the specialising interpreter and to the allocator; immortal objects are demonstrably
 present from 3.12 and demonstrably invisible to single-threaded code. Where they are supposed to
 pay --- reference-count contention between threads --- this study does not isolate them, so this
@@ -731,9 +732,9 @@ this section.
 \paragraph{Result: the fork itself is not the story.}
 Built with identical flags, the Cinder fork lands within \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% of stock CPython 3.14.6 on all
 six kernels ($0.98$--$\meas{ratio:b6_cinderx-fork:mandelbrot/fork|b6_cinderx-stock:mandelbrot/stock}{1.01}\times$ the stock time, Figure~\ref{fig:cinder} top). Five of those
-six differences are resolved by the significance test and one --- binary trees, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ at
-$t=0.15$ --- is not, so the honest statement
-is not ``the same'' but ``measurably different and not usefully so'': the largest of them is
+six differences are resolved by the significance test; the sixth (binary trees, $\meas{ratio:b6_cinderx-fork:binarytrees/fork|b6_cinderx-stock:binarytrees/stock}{0.9996}\times$ at
+$t=0.15$) is not. The honest statement
+is therefore not ``the same'' but ``measurably different and not usefully so'': the largest of them is
 the array sum at $\meas{ratio:b6_cinderx-fork:arraysum/fork|b6_cinderx-stock:arraysum/stock}{0.979}\times$ ($t=5.2$), i.e.\ the fork is \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% faster there, with the
 matrix product next at $\meas{ratio:b6_cinderx-fork:matmul/fork|b6_cinderx-stock:matmul/stock}{0.982}\times$, and nothing moving by more than \meas{pct:b6_cinderx-stock:arraysum/stock|b6_cinderx-fork:arraysum/fork}{2.1}\,\% either way. Its deep runtime features are
 opt-in, and the one that pays here is lazy imports: with them enabled, importing a 200-module
@@ -839,7 +840,7 @@ someone deciding whether to adopt it. It is the second. The 3.14 interpreter car
 sites that specialise a static opcode --- seven \code{\_Ci\_specialize}, five
 \code{specialize\_with\_value} --- and no handler for any of the opcodes they specialise into;
 the 3.12 interpreter in the same tree has eight such handlers, so the mechanism existed and was
-carried across only in one direction. Three consequences followed, each independently fatal.
+carried across only in one direction. The consequences followed, each independently fatal.
 \code{\_Ci\_specialize} wrote the cached opcode over the \code{EXTENDED\_OPCODE} prefix rather
 than over the static opcode itself, and the low byte of a static opcode is an ordinary CPython
 opcode --- \code{STORE\_LOCAL\_CACHED} is 16 and stock opcode 16 is \code{GET\_ITER}, so the
@@ -889,8 +890,10 @@ is the tight compiled loop that is placement-sensitive. This is what leaving ASL
 (\S\ref{sec:method}): a fixed-layout measurement would have reported one of the two modes as
 the answer and nobody would have known there was another.
 
-Against what, then, should \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,ms be read? ``$\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{16.6}\times$ faster than boxed Python'' is the
-comparison usually offered, and it credits the types with what the compiler did, because the
+Against what, then, should \meas{med:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit:ms}{4.25}\,ms be read (the fast
+layout; the sample is drawn from the adaptive sweep, and the adaptive flag does not move the
+compiled row --- shown two paragraphs below)? ``$\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{16.6}\times$ faster than boxed Python'' is the
+comparison that suggests itself first, and it credits the types with what the compiler did, because the
 boxed side of it is interpreted. The same boxed kernel under the same JIT takes \meas{med:b6_static-fork_static:matmul96_int/fork_static/boxed_jit:ms}{48.4}\,ms, so
 the JIT alone is worth $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_python|b6_static-fork_static:matmul96_int/fork_static/boxed_jit}{1.5}\times$ here and \emph{the types are worth $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ on top of
 it} --- or $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static:matmul96_int/fork_static/static_jit}{7.5}\times$ for a process that drew the slow layout. That is the number an adopter
@@ -951,7 +954,7 @@ visible a collection takes $\meas{med:b6_gcscale-fork_cinderx:gc_collect/fork_ci
 takes $\meas{med:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial:ms}{129}$\,ms --- $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/state_visible_serial|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial}{1.45}\times$ faster than leaving it in ($t=161.9$) --- and only then is the
 parallel option positive at all, at $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_par6}{1.06}\times$ ($t=13.7$).
 
-Two things follow. The lever on collection cost is heap composition, and it is worth
+Two follow-ons. The lever on collection cost is heap composition, and it is worth
 $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/state_visible_serial|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial}{1.45}\times$ where the thread count is worth $\meas{ratio:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_serial|b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/immortal_par6}{1.06}\times$ in the one configuration that does
 not make things worse. And the CinderX runtime does not change collection cost by itself: stock
 CPython 3.14.6 collects the same heap in $\meas{med:b6_gcscale-stock:gc_collect/stock/state_visible_serial:ms}{186}$\,ms against CinderX's $\meas{med:b6_gcscale-fork_cinderx:gc_collect/fork_cinderx/state_visible_serial:ms}{187}$\,ms, a difference
@@ -1121,8 +1124,8 @@ thread repays it either way.
 $\meas{ratio:b4_threads-ft:py_arith/ft/T1_control|b4_threads-ft:py_arith/ft/T8}{5.60}\times$ on arithmetic and $\meas{ratio:b4_threads-ft:py_branchy/ft/T1|b4_threads-ft:py_branchy/ft/T8}{6.05}\times$ on branch-heavy code at eight threads, where the
 ordinary build delivers $\meas{ratio:b4_threads-gil:py_arith/gil/T1_control|b4_threads-gil:py_arith/gil/T8}{0.83}\times$ and $\meas{ratio:b4_threads-gil:py_branchy/gil/T1_control|b4_threads-gil:py_branchy/gil/T8}{0.88}\times$ --- that is, on the ordinary build adding
 threads to this workload makes it slower. The \code{PYTHON\_GIL=1} control on the same binary is
-what makes that attributable to the lock rather than to the build. Three entries belong next to
-it. The first is the price: $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ of single-threaded throughput on these microbenchmarks and
+what makes that attributable to the lock rather than to the build. Caveats belong next to
+it. The first is the price: $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ of single-threaded slowdown on these microbenchmarks and
 \meas{pct:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{0.4}\,\% on the mixed pipeline, and it is the build's price, not the lock's --- the same binary
 with the lock switched back on pays it too --- so it is charged to every part of a program,
 including the parts that never start a thread; the second thread repays it. The second is a
@@ -1298,7 +1301,7 @@ Stacking the techniques one at a time gives:
         disappears --- Amdahl's law, measured. The stage was worth \meas{share:b7_pipeline-gil:stage_aggregate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{3.6}\% of the run before
         the technique was applied to it, and that number was available beforehand.
   \item \textbf{C on the classification stage: $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$ end to end.} The stage improves
-        $\meas{ratio:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:stage_validate/gil/v2_native}{2.06}\times$ (54.1 $\to$ \meas{med:b7_pipeline-gil:stage_validate/gil/v2_native:ms}{26.3}\,ms) and it is \meas{share:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{50}\% of the pipeline. Note that this
+        $\meas{ratio:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:stage_validate/gil/v2_native}{2.06}\times$ (54.1 $\to$ \meas{med:b7_pipeline-gil:stage_validate/gil/v2_native:ms}{26.3}\,ms) and it is \meas{share:b7_pipeline-gil:stage_validate/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v0_pure}{50}\% of the pipeline. This
         includes 20\,000 \code{ctypes} crossings at \meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}\,ns
         ($\approx 3.3$\,ms, \S\ref{sec:rq2}).
   \item \textbf{Four threads on the GIL build: $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v3_native_threads}{0.72}\times$ --- a regression.} Both threaded
@@ -1365,7 +1368,7 @@ $\meas{ratio:b3_runtime-v314:str_format_join/v314|b3_runtime-pypy311:str_format_
 $\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-pypy311:matmul/cpython_loop}{42.8}\times$ (matmul), $\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-pypy311:mandelbrot/cpython_loop}{23.1}\times$ (mandelbrot), $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-pypy311:arraysum/cpython_loop}{19.3}\times$ (array sum), $\meas{ratio:b2_branchy-314:tokenize/cpython_loop|b2_branchy-pypy311:tokenize/cpython_loop}{7.5}\times$
 (tokenize), $\meas{ratio:b2_branchy-314:binarytrees/cpython_loop|b2_branchy-pypy311:binarytrees/cpython_loop}{5.8}\times$ (binary trees) and $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-pypy311:bfs/cpython_loop}{3.2}\times$ (BFS).
 
-Three consequences follow.
+The consequences follow.
 
 First, \textbf{on the compute-bound class PyPy is in the same league as the compiled
 implementations, at zero code cost}. Cython, Numba, C and Rust reached $32$--$\meas{ratio:b1_compute-314:matmul/cpython_loop|b1_compute-314:matmul/numba_fastmath}{137}\times$ on

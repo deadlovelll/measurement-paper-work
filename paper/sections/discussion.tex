@@ -1,8 +1,8 @@
 \section{Discussion: a decision table instead of a ranking}
 \label{sec:discussion}
 
-Advice in this area is usually organised by technology --- ``use Numba for this, use C for
-that''. The measurements put the workload first and the technology second, for three reasons
+The easiest way to organise advice in this area is by technology --- ``use Numba for this, use C for
+that''. The measurements put the workload first and the technology second, for reasons
 that recur across all eight questions. The index that works is what the workload does, with the
 technology and its price in the cells.
 
@@ -37,10 +37,10 @@ worth nothing measurable on two of our three kernels and $\meas{pct:b1_flags-314
 \code{-march=native}, the one flag that did change the emitted code everywhere, made one kernel
 $\meas{ratio:b1_flags-314:mandelbrot/O2|b1_flags-314:mandelbrot/O3native}{1.25}\times$ faster and another $\meas{ratio:b1_flags-314:matmul/O3native|b1_flags-314:matmul/O2}{1.80}\times$ \emph{slower} (\S\ref{sec:rq1b}).
 
-\paragraph{3. Every gain has a cost, and the cost is the part that is usually not reported.}
+\paragraph{3. Every gain has a cost, and here it is measured alongside it.}
 JIT compilation costs $\meas{fact:b1_breakeven-314:facts.numba_compile_s:ms}{215}$\,ms of latency in the one case we measured, which is 7 calls or 7335
 calls of work depending on input size (\S\ref{sec:rq1c}). Free-threading costs $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ of
-single-thread throughput (\S\ref{sec:rq5}). Static Python costs a rewrite in primitive types
+single-thread slowdown (\S\ref{sec:rq5}). Static Python costs a rewrite in primitive types
 and is $\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/static_interp|b6_static-fork_static:matmul96_int/fork_static/boxed_python}{10.2}\times$ \emph{slower} if the JIT is not also enabled (\S\ref{sec:rq4}). An FFI costs
 $59$--$\meas{med:b1_compute-314:call_overhead/c_ctypes:ns}{166}$\,ns per crossing, against $\meas{med:b1_compute-314:call_overhead/python_function:ns}{31}$\,ns for a pure-Python call: free for a $10\,\mu$s
 kernel, a real cost per record (\S\ref{sec:rq2}).
@@ -61,7 +61,7 @@ measured effect and a price in every row. It is the form we would put in front o
     \midrule
     numeric loop over an array
       & any compiled path (Cython / Numba / C / Rust)
-      & $32\times$
+      & $\meas{ratio:b1_compute-314:arraysum/cpython_loop|b1_compute-314:arraysum/cython}{32}\times$
       & a build step; the four routes are within $\meas{pct:b1_compute-314:arraysum/c_ctypes|b1_compute-314:arraysum/numba}{0.2}\%$ of each other here \\
     \dots{} and reassociation is acceptable
       & \code{fastmath} / \code{-ffast-math}
@@ -73,7 +73,7 @@ measured effect and a price in every row. It is the form we would put in front o
       & only where the operation exists; $\meas{ratio:b1_compute-314:mandelbrot/cpython_loop|b1_compute-314:mandelbrot/numpy}{4.7}\times$ when it does not fit \\
     branch-heavy scan over flat data
       & Cython or Numba
-      & $12\times$
+      & $\meas{ratio:b2_branchy-314:tokenize/cpython_loop|b2_branchy-314:tokenize/cython}{12}\times$
       & C and Rust are only $8$--$\meas{pct:b2_branchy-314:tokenize/numba|b2_branchy-314:tokenize/c_ctypes}{17}\%$ further ahead \\
     allocation-heavy object graph
       & an allocator that is not CPython's: C or Rust behind an FFI, or Codon
@@ -81,7 +81,7 @@ measured effect and a price in every row. It is the form we would put in front o
       & memory-ownership rewrite, or a recompile if Codon takes the source \\
     irregular graph traversal
       & compile it; a flat layout alone is not the win
-      & $9.9\times$ (Cython and C within half a per cent)
+      & $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-314:bfs/cython}{9.9}\times$ (Cython and C within half a per cent)
       & flattening it in pure Python was worth $\meas{ratio:b2_branchy-314:bfs/cpython_loop|b2_branchy-314:bfs/cpython_flat}{0.89}\times$ \\
     object/attribute-heavy Python
       & upgrade to 3.11+

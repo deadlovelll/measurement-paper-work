@@ -51,10 +51,9 @@ native code and build-level optimisations}}
 
 \begin{abstract}
 \noindent
-Deciding how to speed up a Python program means choosing among a dozen techniques whose
-published results were not produced under comparable conditions --- different machines, different
-input sizes, different baselines --- and almost never state what the technique costs on the code
-it does not accelerate. This paper measures the whole menu on one machine, under one
+Deciding how to speed up a Python program means choosing among a dozen techniques, and comparing
+them directly requires conditions they share: one machine, one protocol, one baseline --- and a
+statement of what each technique costs on the code it does not accelerate. This paper measures the whole menu on one machine, under one
 protocol, with one interpreter provenance. Six kernels --- three compute-bound, three branchy
 and allocation-heavy --- are implemented in pure Python, Cython, Numba, Codon (ahead of
 time and through its JIT), C (through \code{ctypes}) and Rust, with the three compute-bound
@@ -85,8 +84,8 @@ graph traversal.
 Interpreter progress is real but unevenly distributed: 3.14 runs attribute and method
 operations $2.0$--$\meas{ratio:b3_runtime-v310:attr_set/v310|b3_runtime-v314:attr_set/v314}{3.0}\times$ faster than 3.10, 3.11 is where most of that arrived, and 3.12
 gives part of it back by running slower than 3.11 on 14 of our 16 operations. Free-threading
-returns $5.6$--$\meas{ratio:b4_threads-ft:py_branchy/ft/T1_control|b4_threads-ft:py_branchy/ft/T8}{6.1}\times$ on eight threads for a $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ single-thread cost paid
-by the build rather than by the lock, and code whose hot loop is already native scales as well
+returns $5.6$--$\meas{ratio:b4_threads-ft:py_branchy/ft/T1_control|b4_threads-ft:py_branchy/ft/T8}{6.1}\times$ on eight threads for a $1.05$--$\meas{ratio:b4_threads-ft:single_thread_arith/ft|b4_threads-gil:single_thread_arith/gil}{1.14}\times$ single-thread
+\emph{slowdown} paid by the build rather than by the lock, and code whose hot loop is already native scales as well
 or better without it ($\meas{ratio:b4_threads-gil:c_ffi_uniform/gil/T1|b4_threads-gil:c_ffi_uniform/gil/T8}{7.2}\times$). Composition is profile-directed rather than additive: on a mixed pipeline the one
 change that matched the stage profile gave $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v2_numba_native}{1.35}\times$, while stacking all four techniques gave
 $\meas{ratio:b7_pipeline-ft:end_to_end/ft/v0_pure|b7_pipeline-ft:end_to_end/ft/v4_all}{1.26}\times$ at best and $\meas{ratio:b7_pipeline-gil:end_to_end/gil/v0_pure|b7_pipeline-gil:end_to_end/gil/v4_all}{0.73}\times$ under the GIL.
@@ -97,9 +96,9 @@ adding \code{-march=native} to it $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-p
 them is attribute writes. CPython's own experimental JIT is $\meas{geomean:b5_buildcfg-plain|b5_buildcfg-jit}{1.04}\times$ overall, improving 10 of
 our 16 operations and slowing 6 of them. On the alternative-runtime side, CinderX's
 JIT runs our six untyped kernels at $0.33$--$\meas{ratio:b6_cinderx-fork_jit:binarytrees/fork_jit|b6_cinderx-stock:binarytrees/stock}{0.79}\times$ stock once it is allowed to compile
-after the interpreter has specialised --- compiled before first call, the same kernels run at
-$0.85$--$\meas{ratio:b6_cinderx-jitopt_compile_at_first_call:matmul/jitopt_compile_at_first_call|b6_cinderx-stock:matmul/stock}{1.53}\times$, so the sign of that result is a property of the measurement --- and its
-Static Python adds a further $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ on a typed kernel ($\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static:matmul96_int/fork_static/static_jit}{7.5}\times$ for a process that draws the slow code layout), though those primitive types are
+after the interpreter has specialised. Compiled before first call, the same kernels run at
+$0.85$--$\meas{ratio:b6_cinderx-jitopt_compile_at_first_call:matmul/jitopt_compile_at_first_call|b6_cinderx-stock:matmul/stock}{1.53}\times$, so the sign of that result is a property of the measurement. Its
+Static Python adds a further $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_jit|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_jit}{11.4}\times$ on a typed kernel ($\meas{ratio:b6_static-fork_static:matmul96_int/fork_static/boxed_jit|b6_static-fork_static:matmul96_int/fork_static/static_jit}{7.5}\times$ for a process that draws the slow code layout) --- though those primitive types are
 worth having only because something compiles them: interpreted, even after we completed the
 specialising path that shipped unfinished, they are $\meas{ratio:b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/static_interp|b6_static-fork_static_adaptive:matmul96_int/fork_static_adaptive/boxed_python}{5.8}\times$ slower than the boxed code they
 replace. The largest factor available without editing the source is PyPy, which runs our
@@ -124,16 +123,14 @@ ask for annotations and a build step: Cython, Numba, Codon. Some ask for a secon
 behind an FFI: C, C++, Rust. Some ask for a different runtime and the maintenance that comes
 with it: Meta's Cinder and its CinderX extensions~\cite{cinder}, with a JIT, a static typing
 mode, a parallel collector and lazy imports. Choosing badly among these is expensive in
-engineering time, and the published evidence does not narrow the choice.
+engineering time, and scattered numbers are hard to narrow the choice with.
 
-These options are well known. What is missing is a way to place them side by side: each is
-normally demonstrated on the kernel that suits it, on an unnamed machine, against an unnamed
-baseline, with no statement of what was held
-constant and no account of what the technique costs when it is not the one being recommended. A team
-deciding between them is left comparing numbers that were not produced under comparable
-conditions, and the questions that decide the outcome in practice --- how large the input has
-to be before a compiler pays for itself, what a technique costs on the code it does not
-accelerate, whether two of them compose --- are usually not answered at all.
+These options are well known. Placing them side by side is the harder part: the numbers for each
+were obtained on its own kernel, its own machine and against its own baseline, and so do not add
+up with one another. The questions that decide the outcome in practice --- how large the input
+has to be before a compiler pays for itself, what a technique costs on the code it does not
+accelerate, whether two of them compose --- require all of it to be measured in one place and
+under one protocol.
 
 This paper measures that menu under the conditions set out in \S\ref{sec:method}. What we set
 out to produce is a table indexed by \emph{what the workload does} rather than by tool, whose
@@ -179,13 +176,14 @@ Comparative performance work on Python implementations is usually one of three k
 results that accompany each release, and the PyPy speed pages~\cite{pypyspeed}. These are rigorous and
 longitudinal, but they compare an implementation with itself over time, not one acceleration
 strategy with another. (ii)~Documentation for an individual accelerator --- Numba, Cython,
-Codon --- which demonstrates the kernels the tool is good at, by design. (iii)~Practitioner
-articles that time one kernel two or three ways; useful as hypotheses, but typically stating no
-platform, no input size and no protocol, and no cost.
+Codon --- which demonstrates the kernels the tool is good at, by design. (iii)~Individual
+timings of one kernel two or three ways --- a useful source of hypotheses; for such numbers to
+add up with one another they need a platform, an input size, a protocol and the price of the
+technique.
 
-What is comparatively rare, and what this paper does, is a study that (a)~holds the workload
-fixed while varying the acceleration technology, (b)~holds the technology fixed while varying
-the runtime, (c)~reports the same statistics for both, and (d)~quantifies the price of each
+What this paper sets out to do is put all four properties in one place: (a)~hold the workload
+fixed while varying the acceleration technology, (b)~hold the technology fixed while varying
+the runtime, (c)~report the same statistics for both, and (d)~quantify the price of each
 technique alongside its gain. The measurement tooling is standard where standard tooling
 exists: all timing is \code{pyperf}~\cite{pyperf}, the benchmark runner used for CPython's
 own performance work, so the protocol below is its protocol rather than one of our own.
@@ -334,7 +332,7 @@ workers of one benchmark before starting the next, so two benchmarks compared ac
 long run are still separated in time, and a machine that is slowing down will show that
 separation as an effect.
 
-Two things address the part that remains. Every suite except the CinderX, Static Python
+The part that remains is addressed twofold. Every suite except the CinderX, Static Python
 and Codon ahead-of-time runs registers a \emph{machine probe} --- a
 fixed native compute loop called through \code{ctypes}, whose cost does not depend on the
 interpreter --- timed by \code{pyperf} like any other benchmark, so comparing it between two
@@ -389,7 +387,7 @@ abstract. So the finding to carry away is not a recommendation about a flag; it 
 flag does to the emitted code has to be re-established per compiler and per target, and that
 the disassembly settles the question in seconds.
 
-\paragraph{Core classes, and where pinning stops helping.} Pinning the single-threaded suites to
+\paragraph{Pinning to cores does not remove all of the spread.} Pinning the single-threaded suites to
 the performance class (\S\ref{sec:method}) removes the largest source of unexplained dispersion
 but not all of it: nothing is \emph{excluded} from those cores, so the operating system and any
 other work on the machine may still be scheduled there. Real isolation would need the cores
@@ -400,8 +398,7 @@ Table~\ref{tab:platform}. Its curve is reported whole rather than reduced to a
 single
 ``$N\times$'', because past six threads the added threads are on slower cores.
 
-\paragraph{Kernel selection, and what six kernels cannot stand for.} Six kernels cannot
-represent all Python workloads. They were
+\paragraph{Six kernels do not represent every Python workload.} They were
 chosen to instantiate the workload classes of \S\ref{sec:intro}, and the
 compute/branchy split is deliberately extreme so that the technologies' behaviour
 separates.
@@ -415,7 +412,7 @@ construction. Benchmarks that are parallel or bandwidth-bound therefore carry a 
 exposure that the probe does not cover, and the affected suite was re-measured on an idle
 machine rather than reported as it stood.
 
-\paragraph{Machine steadiness, and what is still exposed.} The machine probe shows this host
+\paragraph{How far the machine moved while the measurements ran.} The machine probe shows this host
 moving very little: across the 46 result files that carry it, the slowest invocation is
 $\meas{ratio:b1_compute-pypy311:machine_probe/c_busy|b5_startup-jit:machine_probe/c_busy}{1.014}\times$ the fastest and the ninetieth percentile is $\meas{probeagg:p90}{1.009}\times$. That is a measured
 statement rather than an assumption, and it is what the probe is for. Comparisons \emph{within} one suite
